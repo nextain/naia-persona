@@ -1,0 +1,196 @@
+# Dependencies
+node_modules/
+
+# Build
+dist/
+.next/
+*.tsbuildinfo
+
+# Environment & Secrets (T4)
+.env
+.env.*
+!.env.example
+*.pem
+*.p12
+*.pfx
+*.key
+
+# Auth secrets (AES-256-GCM encrypted at rest, naia-os #337)
+# Format: <ADK_ROOT>/naia-settings/auth/{dev,prod}.json.enc
+# Master password lives in OS keychain, not in this repo.
+naia-settings/auth/*.enc
+
+# Local machine config (per-machine paths, local gateway URL, test persona)
+naia-settings/config.json
+
+# Chat session transcripts — personal conversation data, never shared
+naia-settings/.sessions/
+
+# Discord AI session bindings, persona, and operator IDs are local/private.
+naia-settings/messenger-sessions/config.json
+
+# Local runtime state and credentials (never commit)
+/conversations/
+/naia-settings/.keys/
+/naia-settings/credentials
+/naia-settings/processing.json
+/naia-settings/slots-manifest.json
+/naia-settings/ui-config.json
+
+# Per-machine LLM routing (points at whatever pod this machine happens to run)
+.agents/context/llm-config.yaml
+
+# OS
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# Cache
+.ruff_cache/
+.mypy_cache/
+.pytest_cache/
+
+# ctx index (auto-rebuilt by hook, never committed)
+.agents/context/.ctx-index.json
+
+# Deterministic local hook queues and scratch receipts
+.agents/work/
+
+# BEH runtime artifacts (per-session ledger/state + opt-in/runtime markers)
+.agents/harness/ledger/
+.agents/harness/state/
+.agents/harness/receipts/
+.agents/harness/leases/
+.agents/harness/units/
+.agents/harness/quarantine/
+.agents/harness/receipts-v2/
+.agents/harness/claims/
+.agents/harness/locks/
+.agents/harness/request-contract-on
+.claude/beh-on
+.claude/beh-stuck
+.claude/beh-reset
+.claude/beh-handshake
+.claude/beh-launch-bypass
+
+# Python
+__pycache__/
+*.pyc
+
+# Data directories (managed locally per fork)
+data-company/
+!data-company/README.md
+data-teams/
+!data-teams/README.md
+data-private/
+!data-private/README.md
+
+# Project repositories (cloned per fork)
+projects/
+!projects/README.md
+!.
+
+# Temp — all scratch/debug scripts go in tmp/ (never in root)
+tmp/
+tmp-*
+tmp_*
+*.tmp
+*.temp
+test_harness.py
+
+# Claude worktrees
+.claude/worktrees/
+
+# Review outputs
+review-*.txt
+rerun-*.txt
+
+nul
+# Local messenger credentials, configuration, and durable runtime state
+/naia-settings/.keys/
+/naia-settings/.sessions/
+/naia-settings/messenger-sessions/config.json
+/naia-settings/messenger-sessions/instances/
+.claude/beh-sign-key
+
+# 보안(보안 리뷰 HIGH): 머신로컬·런타임상태·prod토큰·제3자 PII 비추적
+.claude/settings.local.json
+.claude/git-push-approved.marker
+.claude/prod-access-approved.marker
+.claude/file-locks.json
+.claude/stage-files.sh
+skills/business/press-release/cloud/contacts.json
+skills/business/press-release/_review_plan.md
+
+# 내부 세션 아티팩트(개인경로·내부URL·키 흔적) + 제3자 PII 비추적(OSS readiness 게이트)
+.agents/progress/
+.agents/reviews/
+.agents/session-contracts/*
+!.agents/session-contracts/README.md
+!.agents/session-contracts/schema.json
+
+# Local handoff/handover artifacts — session/PC transfer notes are never source.
+# Only basenames that START with handoff/handover are global. Topic-prefixed
+# local notes belong under already-ignored .agents/work|progress|reviews or dirs below.
+**/.handoff/
+**/.handover/
+**/[Hh][Aa][Nn][Dd][Oo][Ff][Ff]*.[Mm][Dd]
+**/[Hh][Aa][Nn][Dd][Oo][Ff][Ff]*.[Tt][Xx][Tt]
+**/[Hh][Aa][Nn][Dd][Oo][Ff][Ff]*.[Jj][Ss][Oo][Nn]
+**/[Hh][Aa][Nn][Dd][Oo][Ff][Ff]*.[Yy][Aa][Mm][Ll]
+**/[Hh][Aa][Nn][Dd][Oo][Ff][Ff]*.[Yy][Mm][Ll]
+**/[Hh][Aa][Nn][Dd][Oo][Vv][Ee][Rr]*.[Mm][Dd]
+**/[Hh][Aa][Nn][Dd][Oo][Vv][Ee][Rr]*.[Tt][Xx][Tt]
+**/[Hh][Aa][Nn][Dd][Oo][Vv][Ee][Rr]*.[Jj][Ss][Oo][Nn]
+**/[Hh][Aa][Nn][Dd][Oo][Vv][Ee][Rr]*.[Yy][Aa][Mm][Ll]
+**/[Hh][Aa][Nn][Dd][Oo][Vv][Ee][Rr]*.[Yy][Mm][Ll]
+# Formal handoff/handover guides and contracts are durable project knowledge.
+# Re-include them only in official documentation/decision directories.
+!docs/**/[Hh][Aa][Nn][Dd][Oo][Ff][Ff]*[Gg][Uu][Ii][Dd][Ee]*.*
+!docs/**/[Hh][Aa][Nn][Dd][Oo][Ff][Ff]*[Cc][Oo][Nn][Tt][Rr][Aa][Cc][Tt]*.*
+!docs/**/[Hh][Aa][Nn][Dd][Oo][Vv][Ee][Rr]*[Gg][Uu][Ii][Dd][Ee]*.*
+!docs/**/[Hh][Aa][Nn][Dd][Oo][Vv][Ee][Rr]*[Cc][Oo][Nn][Tt][Rr][Aa][Cc][Tt]*.*
+!spec/**/[Hh][Aa][Nn][Dd][Oo][Ff][Ff]*[Gg][Uu][Ii][Dd][Ee]*.*
+!spec/**/[Hh][Aa][Nn][Dd][Oo][Ff][Ff]*[Cc][Oo][Nn][Tt][Rr][Aa][Cc][Tt]*.*
+!spec/**/[Hh][Aa][Nn][Dd][Oo][Vv][Ee][Rr]*[Gg][Uu][Ii][Dd][Ee]*.*
+!spec/**/[Hh][Aa][Nn][Dd][Oo][Vv][Ee][Rr]*[Cc][Oo][Nn][Tt][Rr][Aa][Cc][Tt]*.*
+!design/**/[Hh][Aa][Nn][Dd][Oo][Ff][Ff]*[Gg][Uu][Ii][Dd][Ee]*.*
+!design/**/[Hh][Aa][Nn][Dd][Oo][Ff][Ff]*[Cc][Oo][Nn][Tt][Rr][Aa][Cc][Tt]*.*
+!design/**/[Hh][Aa][Nn][Dd][Oo][Vv][Ee][Rr]*[Gg][Uu][Ii][Dd][Ee]*.*
+!design/**/[Hh][Aa][Nn][Dd][Oo][Vv][Ee][Rr]*[Cc][Oo][Nn][Tt][Rr][Aa][Cc][Tt]*.*
+!.agents/context/**/[Hh][Aa][Nn][Dd][Oo][Ff][Ff]*[Gg][Uu][Ii][Dd][Ee]*.*
+!.agents/context/**/[Hh][Aa][Nn][Dd][Oo][Ff][Ff]*[Cc][Oo][Nn][Tt][Rr][Aa][Cc][Tt]*.*
+!.agents/context/**/[Hh][Aa][Nn][Dd][Oo][Vv][Ee][Rr]*[Gg][Uu][Ii][Dd][Ee]*.*
+!.agents/context/**/[Hh][Aa][Nn][Dd][Oo][Vv][Ee][Rr]*[Cc][Oo][Nn][Tt][Rr][Aa][Cc][Tt]*.*
+!.agents/decisions/**/[Hh][Aa][Nn][Dd][Oo][Ff][Ff]*[Gg][Uu][Ii][Dd][Ee]*.*
+!.agents/decisions/**/[Hh][Aa][Nn][Dd][Oo][Ff][Ff]*[Cc][Oo][Nn][Tt][Rr][Aa][Cc][Tt]*.*
+!.agents/decisions/**/[Hh][Aa][Nn][Dd][Oo][Vv][Ee][Rr]*[Gg][Uu][Ii][Dd][Ee]*.*
+!.agents/decisions/**/[Hh][Aa][Nn][Dd][Oo][Vv][Ee][Rr]*[Cc][Oo][Nn][Tt][Rr][Aa][Cc][Tt]*.*
+skills/business/press-release/contacts.json
+skills/business/press-release/results.json
+
+# Deploy-guard maintainer state/ops (per-fork; contains real project list, paths,
+# approvals, audit log). Schema docs are tracked as *.sample.json. Hook itself
+# = .claude/hooks/deploy-guard.js (tracked, fork-agnostic).
+.claude/deploy/config.json
+.claude/deploy/approvals.json
+.claude/deploy/audit.jsonl
+.claude/deploy/pre-deploy-check.sh
+.claude/deploy/prod-deploy.sh
+.claude/deploy/test-deploy-guard-block.sh
+.claude/deploy/test-deploy-guard.cjs
+.claude/deploy/test-deploy-guard.sh
+
+# Internal GitHub-issue triage tooling (maintainer-only; hardcodes the
+# maintainer's workspace path + project list + generated reports/logs).
+scripts/triage/
+
+# 워크스페이스 UUID(개인 식별자) 비추적
+.naia/
+.agents/research/**/.align-audit-stamp.json

@@ -1,0 +1,37 @@
+{
+  "name": "naia-adk",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Naia ADK — AI Development Kit workspace with backend server and dashboard",
+  "type": "module",
+  "engines": {
+    "node": ">=22",
+    "pnpm": ">=9"
+  },
+  "packageManager": "pnpm@9.0.0",
+  "workspaces": [
+    "packages/*"
+  ],
+  "scripts": {
+    "dev": "concurrently -n server,dashboard -c blue,green \"tsx packages/server/src/cli.ts serve\" \"pnpm --filter @naia-adk/dashboard dev\"",
+    "dev:server": "tsx packages/server/src/cli.ts serve",
+    "dev:dashboard": "pnpm --filter @naia-adk/dashboard dev",
+    "serve": "tsx packages/server/src/cli.ts serve",
+    "build": "pnpm -r build",
+    "test": "pnpm -r test",
+    "test:request-contract": "node scripts/run-request-contract-tests.cjs",
+    "test:harness-native": "node scripts/run-native-harness-tests.cjs",
+    "test:entry-points": "node .claude/hooks/test/run-sync-entry-points-test.cjs && node .claude/hooks/test/run-agents-context-mirror-test.cjs && node .codex/hooks/test-session-contract-gate.cjs",
+    "test:routine-approval-policy": "node .claude/hooks/test/run-routine-approval-policy-test.cjs",
+    "test:discord-sessions": "node scripts/run-discord-session-tests.cjs",
+    "check:entry-points": "node .claude/hooks/sync-entry-points.js --check",
+    "test:context-translation": "python scripts/i18n/test-translate-ctx.py && node .claude/hooks/test/run-context-translation-batch-test.cjs",
+    "check:context-translation": "python scripts/i18n/translate-ctx.py --check"
+  },
+  "devDependencies": {
+    "@earendil-works/pi-coding-agent": "^0.74.1",
+    "concurrently": "^9.2.1",
+    "tsx": "^4.19.0",
+    "typescript": "^5.8.0"
+  }
+}
