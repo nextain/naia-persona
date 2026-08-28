@@ -1,248 +1,43 @@
-# Naia Ecosystem Architecture
+# naia-persona architecture
 
-> naia-adk is the personal base. Higher layers extend it for organizational governance and concrete company/member instances.
+## 책임 경계
 
-## Overview
+`naia-memory`는 대화 원문과 장기 기억의 정본이며 실시간 RAG를 제공합니다. `kb-compiler`는 동의된 대화를 학습 가능한 작은 단위로 정제하고 출처와 품질 정보를 유지합니다. `naia-persona`는 그 결과의 검증, 학습, 평가, candidate registry를 담당합니다. 추론 서버는 승인된 adapter만 읽습니다.
 
-```
-            naia-adk (OSS — this repo, public)
-            ┌─────────────────────────────┐
-            │  Personal Base              │
-            │  - workspace scaffold       │
-            │  - tool-agnostic format     │
-            │  - base skills              │
-            │  - solo governance baseline │
-            └────────────┬────────────────┘
-                         │ business upstream
-                         ▼
-              naia-business-adk (private)
-              ┌─────────────────────────────┐
-              │  Organizational Extension   │
-              │  - assets / process /       │
-              │    permissions governance   │
-              │  - team ownership           │
-              │  - delegated approval       │
-              │  - business workflows       │
-              └────────────┬────────────────┘
-                           │ instantiate
-              ┌────────────┼────────────┐
-              ▼            ▼            ▼
-        nextain-adk   {company}-adk    {company}-adk
-        (company)     (company)    (company)
-        .agents/      .agents/      .agents/
-        data-company/ data-company/ data-company/
-        data-business/ data-business/ data-business/
-        data-private/  data-private/  data-private/
+노트북이나 향후 모바일 앱은 voice/UI와 임시 로컬 캐시를 맡습니다. memory와 compiler는 장기적으로 GPU PC 또는 별도 서버 계층에 통합해 여러 클라이언트가 동일한 기억과 데이터 정책을 보도록 합니다. 단, memory API와 학습 worker의 권한은 분리합니다. 학습 worker는 compiler가 내보낸 승인 dataset만 읽고 원본 memory 저장소를 임의 탐색하지 않습니다.
+
+## 데이터 흐름
+
+```text
+client → memory/RAG → response
+   └→ explicit consent → compiler → immutable dataset
+                                   → validator → QLoRA run
+                                                → evaluation
+                                                → candidate registry
+                                                → manual promotion
 ```
 
-## Disclosure Levels
+각 dataset에는 생성 시각, compiler 버전, source 범위, consent, 제거 규칙, 해시를 기록해야 합니다. 원문 대화와 dataset, Hugging Face cache, adapter와 run 결과는 `data-private/` 아래에 두며 git에 커밋하지 않습니다.
 
-| Level | Meaning | Strategy | Examples |
-|------|---------|----------|---------|
-| `public` | Safe for public repos and websites | open repo / public docs | skills, packages, templates, docs |
-| `controlled` | Shareable externally with review | approved external sharing only | vetted partner material, approved brand assets |
-| `internal` | Workspace or company internal | private repo / limited audience | `.agents/`, `data-company/`, internal documents |
-| `confidential` | Sensitive operational or customer-bound material | private repo or outside git, need-to-know handling | `data-business/`, `data-private/`, `.env`, certificates, API keys |
+## 모델 계보
 
-Levels also imply different expectations for AI behavior:
+학습 parent는 PEFT가 지원하는 Qwen3.8-27B 원본 계열이어야 합니다. 현재 W4A16 AutoRound checkpoint와 DFlash2 drafter는 inference artifact이며 학습 parent가 아닙니다. 기존 unlocked adapter를 계속 학습하려면 base revision, target modules, rank, tokenizer/chat template이 일치하는지 먼저 확인합니다. 불일치하면 unlocked adapter와 persona adapter를 별도로 학습·조합하는 실험 트랙을 만들며 조용히 병합하지 않습니다.
 
-- `public`: may be summarized and published
-- `controlled`: may be shared externally only with intent and review
-- `internal`: may be read and worked on, but not publicly published by default
-- `confidential`: stronger need-to-know handling, caution for memory promotion, never treated as normal publishable context
+## 24GB 실행 경계
 
-## Model: Personal Base + Organizational Extension + Instances
+- NF4 double quantization과 BF16 compute
+- batch size 1, gradient accumulation 16
+- gradient checkpointing, sequence length 512에서 시작
+- GPU1 추론 서비스와 학습 worker 동시 실행 금지
+- OOM 시 sequence length를 먼저 낮추고 target module/rank를 조정
+- 컨테이너는 교체 가능하며 데이터와 결과는 host volume에 유지
 
-| Layer | What | For Who |
-|-------|------|---------|
-| **naia-adk** | Personal base: scaffold + format + minimum solo governance | Individuals using AI-assisted workspaces |
-| **naia-business-adk** | Organizational extension: assets / process / permissions governance | Teams and companies |
-| **{company}-adk** | Company instance with real products, teams, and policy | Specific organization's AI operations |
-| **{member}-adk** | Company-linked personal instance | Members working within company context |
+## 승격 계약
 
-## Solo Governance Baseline
+학습 산출물의 기본 상태는 언제나 `candidate`입니다. 승격에는 dataset validation 통과, base/unlocked/candidate 고정 평가 비교, 개인정보 회귀 검사, 대표 Naia 대화 수동 검토, 처리량과 VRAM 확인이 모두 필요합니다. scheduler는 수집·검증·후보 학습을 자동화할 수 있지만 production adapter 포인터는 변경할 수 없습니다. 직전 adapter와 manifest를 보존해 rollback 가능해야 합니다.
 
-The base layer should define a minimum collaboration model even for one person:
+## 현재 검증 상태와 한계
 
-- `read`, `write`, `execute`, and `publish` are not the same action
-- public, internal, confidential, and secret are not just storage tiers but disclosure semantics
-- production mutation, secret handling, and public claims require stronger gates than local edits
-- session-local context should not be promoted into persistent/shared context without intent
+2026-08-26에 GPU1 RTX 3090 24GB에서 Qwen3.8-27B QLoRA의 데이터 컴파일부터 학습·평가·승격 차단까지 한 번 완주했습니다. 같은 GPU에서 DFlash2가 고정 조건의 단일 스트림 생성 속도를 41.47 tok/s에서 111.95 tok/s로 높이는 것도 확인했습니다.
 
-This belongs in `naia-adk` because solo AI collaboration can fail before any company layer exists.
-
-## naia-adk Skill Trees (two trees, both ship in this base repo)
-
-naia-adk has **two skill trees** with different SoTs and consumers. The disk is the
-single source of truth; the lists below mirror it.
-
-### `.agents/skills/` — AI-assistant / workflow tree
-
-SoT for Claude Code (via `.claude/skills/` symlinks); indexed by
-`.agents/context/skills-index.yaml`.
-
-| Skill | Description |
-|-------|-------------|
-| `review-pass` | 4-stage multi-AI cross-validation review |
-| `verify-implementation` | Run all `verify-*` skills → unified report |
-| `verify-contract-conformance` | Declared API/interface contract vs implementation |
-| `manage-skills` | Detect drift, create/update `verify-*` skills |
-| `merge-worktree` | Squash-merge worktree → main, semantic commits |
-| `read-doc` | HWP/HWPX/PDF/DOCX/XLSX/PPTX text extraction |
-| `webapp-testing` | Playwright E2E for local web apps |
-| `doc-coauthoring` | Structured document co-authoring (3-step) |
-| `project-create` / `project-migration` / `migrate-ctx` | Scaffold / extract / migrate workspace repos & context |
-| `payroll` | 급여명세서 PDF + 이메일 발송 |
-| `press-release` | 보도자료 작성·기자 조사·발송 |
-| `patent-draft` | KIPO 특허 명세서 초안 |
-| `patent-pipeline` | 특허 발굴·평가·출원 |
-| `copyright-reg` | 어문저작권 등록 서류 |
-| `weekly-report` | 주간 업무 결과 (git 커밋 기반) |
-
-### `skills/` — operational / runtime tree
-
-Discovered by the dashboard API (`core.discoverSkills()` scans `skills/**/SKILL.md`)
-and served at `/api/skills`.
-
-| Skill | Description |
-|-------|-------------|
-| `email` | SMTP email with templates |
-| `sms` | SMS / 알림톡 via gateway adapter |
-| `notify` | Channel-agnostic notification |
-| `channel-management` | Discord/Slack channel management |
-| `service-management` | Service monitoring, cost, incident response |
-| `web-monitoring` | SEO, uptime, analytics |
-| `document-generation` | Branded PDF (contract/resolution/payroll) |
-| `read-doc` · `doc-coauthoring` · `review-pass` | Also present here (dashboard-visible copies) |
-| `config` · `cron` · `diagnostics` · `system-status` · `sessions` · `memo` · `skill-manager` · `time` · `weather` | Runtime utilities |
-
-## naia-business-adk Skills (organizational extension)
-
-`naia-business-adk` adds team-scoped governance and additional org skills on top of the
-base trees above. Examples (not exhaustive, and not shipped in this base repo):
-
-| Skill | Description |
-|-------|-------------|
-| `contract` | 근로계약서 (근로기준법) + 디지털 서명 |
-| `expense` | 지출결의서 + 영수증 OCR |
-| `accounting` | 장부 기록, 월마감, 세무 |
-| `crm` | 파일 기반 경량 CRM |
-| `client-communication` | 고객 소통 관리 |
-
-## Organizational Governance Extension
-
-`naia-business-adk` should not be described as a premium skill bundle only.
-
-It is the organizational extension that adds:
-
-- team ownership
-- delegated approval
-- need-to-know handling for customer/legal/finance data
-- audit-ready workflow expectations
-- business workflow classes and policy
-
-Skills are one output of that extension, not the whole product.
-
-## {company}-adk (Company Workspace)
-
-At the organizational layer, `naia-business-adk` scaffolding creates:
-
-```
-{name}-adk/
-├── .agents/                   ← AAIF standard
-│   ├── context/               ← Company info, rules, config
-│   ├── skills/                ← Company-specific skills (if needed)
-│   ├── workflows/             ← Workflow definitions
-│   ├── commands/              ← Slash commands
-│   └── hooks/                 ← Lifecycle hooks
-├── .users/                    ← Human-readable mirror (Korean)
-├── .claude/                   ← Claude Code settings
-├── data-company/              ← T2: Company general data
-│   ├── docs-{company}/        ← Company docs (submodule)
-│   ├── docs-work-logs/        ← Work logs (submodule)
-│   └── caretive/              ← Reference data
-├── data-business/             ← T3: Company sensitive data
-│   ├── docs-business/         ← Business docs (submodule)
-│   ├── accounting/            ← Accounting (submodule)
-│   └── documents/             ← Generated documents (submodule)
-├── data-private/              ← T3: Personal data
-│   ├── envs/                  ← .env, key files
-│   ├── personal/              ← Personal documents
-│   └── memo/                  ← Personal memos
-├── projects/                  ← Project repos (submodules)
-│   └── refs/                  ← Reference repos (read-only)
-├── skills/                    ← base + organization/company-specific extensions
-├── packages/                  ← Runtime packages
-├── scripts/                   ← PDF/sign engine, tools
-├── templates/                 ← Document templates
-├── docs/                      ← Architecture, specs
-├── AGENTS.md
-└── .gitignore
-```
-
-## naia-os Integration
-
-The active ADK instance serves as the **skill backend** for the naia-os desktop app:
-
-```
-naia-os (Desktop App, Tauri 2)
-  └─ agent ──WebSocket/MCP──> {active-adk} Runtime
-                                  ├─ Base skill execution
-                                  ├─ Document generation (when provided by the active instance)
-                                  ├─ Approval / org workflows (only in business/company layers)
-                                  └─ MCP Server → expose skills to naia-os
-```
-
-Integration paths (phased):
-1. **MCP**: naia-adk runs MCP Server → naia-os connects as MCP Client
-2. **Gateway**: naia-adk implements `GatewayAdapter` → naia-os agent calls directly
-3. **Shared SDK**: Extract `@naia/skill-sdk` from common interfaces
-
-## Real Examples
-
-### nextain-adk (= company instance)
-
-```
-nextain-adk/                     ← company workspace root
-├── .agents/                      ← AAIF (context, skills, workflows)
-├── .users/                       ← Korean mirror
-├── .claude/                      ← Claude Code settings
-├── data-company/
-│   ├── docs-nextain/             ← submodule: nextain/docs-nextain
-│   ├── docs-work-logs/           ← submodule: nextain/docs-work-logs
-│   └── caretive/                 ← Reference data
-├── data-business/
-│   ├── docs-business/            ← submodule: nextain/docs-business
-│   ├── accounting/               ← submodule: nextain/nextain-accounting
-│   └── documents/                ← submodule: nextain/nextain-documents
-├── data-private/                 ← submodule: nextain/luke-private
-├── projects/
-│   ├── naia-os/                  ← submodule: nextain/naia-os
-│   ├── about.nextain.io/         ← submodule
-│   ├── naia.nextain.io/          ← submodule
-│   ├── 9router/                  ← submodule
-│   └── refs/                     ← read-only upstream tracking
-├── skills/                       ← base + business skills
-├── packages/                     ← runtime engine (future)
-├── scripts/                      ← triage, PDF, tools
-├── templates/                    ← document templates
-└── docs/                         ← architecture, specs
-```
-
-### alpha-adk (= company-linked personal instance)
-
-`alpha-adk` is not a generic personal fork. It is a member instance that inherits company context while preserving local working memory and experiments.
-
-### {company}-adk (= company instance)
-
-```
-{company}-adk/
-├── .agents/
-│   └── context/                  ← {Company} company info
-├── data-company/
-│   └── docs-{company}/               ← {Company} docs
-├── data-business/
-│   └── documents/                ← {Company} documents
-└── projects/
-    └── home.{company}.com/           ← {Company} project
-```
+첫 Alpha 후보는 일반·안전 sanity 점수를 유지했지만 persona 점수가 기준보다 향상되지 않아 승격하지 않았습니다. 학습 중 completion boundary mismatch 경고도 있어 다음 실험 전에 masking 검증을 보강해야 합니다. 이 결과는 8개 프롬프트의 파이프라인 확인이며 대규모 제품 벤치마크가 아닙니다. 상세 조건은 [실험 보고서](./reports/alpha-persona-pipeline-experiment-2026-08-26.md)에 있습니다.
