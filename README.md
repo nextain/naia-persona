@@ -16,17 +16,34 @@
 
 `naia-memory`는 AI가 최신 사실과 과거 대화를 필요할 때 찾아보게 하는 기억 계층이고, `naia-persona`는 반복되는 말투와 행동 방식을 모델 자체에 천천히 학습시키는 계층입니다. `kb-compiler`는 두 계층 사이에서 학습에 적합한 예시만 만드는 역할을 합니다.
 
-이 저장소는 **공개 오픈소스 프로젝트를 목표로 개발**합니다. 개인 Alpha를 만드는 데이터와 사용자별 산출물만 별도의 비공개 영역에 둡니다.
+이 저장소는 **공개 오픈소스 프로젝트**입니다. [Naia, the Liquid Cat](https://www.naia.land/en/naia)를 재현 가능한 reference persona로 사용해, 개발자가 자신의 캐릭터로 데이터와 평가 규칙을 교체하는 전 과정을 보여줍니다. 사용자별 데이터와 산출물은 별도의 비공개 영역에 둡니다.
 
 | 공개 프로젝트 영역 | 개인 비공개 영역 |
 |---|---|
-| 파이프라인 코드와 컨테이너 정의 | Alpha의 실제 대화와 개인 메모리 |
+| 파이프라인 코드와 컨테이너 정의 | 실제 대화와 개인 메모리 |
 | 데이터 스키마·동의·비식별화 규칙 | 사용자별 원본·정제 dataset |
 | 학습·평가·승격 게이트 도구 | 학습된 개인 LoRA adapter와 모델 가중치 |
 | 재현 가능한 운영 절차와 비식별 보고서 | 모델 cache, 상세 실행 로그와 운영 credential |
 | 합성·비식별 예제 dataset | 개인을 역추적할 수 있는 provenance |
 
-즉, 누구나 자신의 모델 개인화 파이프라인을 구축할 수 있는 방법과 도구는 공개하되, 특정 사용자의 Alpha를 구성하는 데이터와 결과물은 공개하지 않습니다.
+즉, 누구나 자신의 모델 개인화 파이프라인을 구축할 수 있는 방법과 도구는 공개하되, 특정 사용자를 식별하거나 재구성할 수 있는 데이터와 결과물은 공개하지 않습니다.
+
+## 비공개 downstream에서 사용하기
+
+개인 페르소나를 운영할 때는 이 공개 저장소에 개인 데이터를 커밋하지 말고, 별도의 **private downstream 저장소**를 만드세요. GitHub는 공개 저장소의 private fork를 지원하지 않으므로, 독립 private 저장소를 만들고 이 저장소를 `upstream` remote로 연결하는 방식을 권장합니다.
+
+```bash
+# private 저장소를 clone한 뒤 공개 파이프라인을 upstream으로 연결
+git remote add upstream https://github.com/nextain/naia-persona.git
+git fetch upstream
+git merge upstream/main
+
+# 이후 공개 파이프라인 업데이트를 받을 때
+git fetch upstream
+git merge upstream/main
+```
+
+downstream에는 개인용 persona card, 데이터 생성 규칙과 운영 설정만 추가합니다. 대화 원문, 사용자 메모리, 학습 dataset, adapter, 모델 cache와 상세 실행 로그는 private 저장소에서도 기본적으로 `data-private/`에 두고 커밋하지 않는 편이 안전합니다. 공개에 적합한 범용 개선은 개인 데이터 없이 재현 가능한 형태로 정리해 upstream에 기여할 수 있습니다.
 
 ## 현재 상태
 
@@ -34,11 +51,11 @@
 |---|---|---|
 | Qwen3.8-27B DFlash2 추론 | 검증 완료 | GPU1에서 41.47 → 111.95 tok/s, 2.70배 |
 | 24GB GPU QLoRA 파이프라인 | 검증 완료 | RTX 3090 GPU1, 96개 샘플, 18 step |
-| Alpha persona v1 후보 | 승격 차단 | 일반/안전 점수는 유지했지만 persona 향상 0 |
+| Naia reference persona v1 | 승격 차단 | 일반 87.5·안전 100 유지, persona 50.0 → 50.0 |
 | 대화 기반 야간 FT | 설계 단계 | 자동화 범위는 후보 생성까지, 승격은 수동 |
 | 운영 persona adapter | 없음 | 현재 서비스는 unlocked 기준 모델 |
 
-첫 실험은 파이프라인이 실제 24GB GPU에서 끝까지 동작함을 증명했습니다. 그러나 completion boundary 경고와 persona 점수 미향상 때문에 후보를 운영에 올리지 않았습니다. 수치와 한계는 [실험 보고서](docs/reports/alpha-persona-pipeline-experiment-2026-08-26.md)에 기록되어 있습니다.
+기반 파이프라인과 공개 Naia reference 실험은 24GB GPU에서 끝까지 동작함을 확인했습니다. 첫 Naia 후보는 completion-only 경계를 87개 학습 샘플에서 선검증하고 일반·안전 점수를 유지했지만 persona 향상이 없어 운영 승격을 차단했습니다. 이는 파이프라인 성공과 모델 품질 성공을 분리해 판정한 결과입니다. 정확한 명령, 수치와 다음 실험 조건은 [Naia v1 실험 보고서](docs/reports/naia-persona-v1-experiment-2026-08-29.md)에 있습니다.
 
 ## 시스템 경계
 
@@ -69,6 +86,12 @@ naia-shell / 향후 모바일 앱
 데이터 검증과 컴파일은 GPU 없이 실행할 수 있습니다.
 
 ```bash
+python3 examples/naia-v1/build_dataset.py
+python3 scripts/validate_dataset.py examples/naia-v1/source.jsonl
+python3 scripts/compile_dataset.py examples/naia-v1/source.jsonl \
+  data-private/datasets/naia-v1 --dataset-name naia-v1 --seed naia-v1
+
+# 자기 캐릭터는 동일한 스키마로 별도 파일을 작성합니다.
 mkdir -p data-private/{incoming,datasets,runs,registry,hf-cache}
 python3 scripts/validate_dataset.py data-private/incoming/persona.jsonl
 python3 scripts/compile_dataset.py \
@@ -85,8 +108,10 @@ podman run --rm --device nvidia.com/gpu=1 \
   --security-opt=label=disable --shm-size=16g \
   -v "$PWD:/workspace:Z" \
   -v "$PWD/data-private/hf-cache:/root/.cache/huggingface:Z" \
+  -v "/path/to/compatible-base-model:/model:ro" \
   naia-persona:dev \
   python3 scripts/train_lora.py \
+    --base-model /model \
     --data data-private/datasets/persona-v1/train.jsonl \
     --output data-private/runs/persona-v1
 ```
@@ -114,7 +139,7 @@ podman run --rm --device nvidia.com/gpu=1 \
 - [데이터 파이프라인](docs/DATA_PIPELINE.md) — 스키마, 분할, 야간 후보 생성
 - [학습 운영 절차](docs/TRAINING.md) — GPU1, 컨테이너, 복구 순서
 - [검증 전략](docs/VALIDATION.md) — 품질·안전·속도 승격 게이트
-- [첫 GPU 실험 보고서](docs/reports/alpha-persona-pipeline-experiment-2026-08-26.md)
+- [Naia reference persona](examples/naia-v1/README.md) — 공개 캐릭터 카드·데이터·평가 예제
 - `scripts/validate_dataset.py` — 데이터 계약 검증
 - `scripts/compile_dataset.py` — 결정론적 분할과 manifest 생성
 - `scripts/train_lora.py` — 단일 24GB GPU용 QLoRA 진입점
@@ -133,4 +158,4 @@ podman run --rm --device nvidia.com/gpu=1 \
 - 기존 모델과 후보 모델을 비교하는 평가·승격 게이트
 - 컨테이너 실행 환경, 운영 절차와 비식별화된 실험 보고서
 
-사용자별 실행 데이터는 `data-private/`에 두며 Git에서 제외합니다. 개인 Alpha의 dataset과 adapter는 공개 대상이 아닙니다. 예제 dataset은 실제 대화를 변형한 자료가 아니라 공개 배포를 위해 별도로 작성하며, 기반 모델 관련 산출물은 해당 라이선스를 충족하는 범위에서만 다룹니다.
+사용자별 실행 데이터는 `data-private/`에 두며 Git에서 제외합니다. 개인 dataset과 adapter는 공개 대상이 아닙니다. Naia 예제 dataset은 실제 대화를 변형한 자료가 아니라 공개 캐릭터 설정에서 행동 원칙을 추출해 새로 작성하며, 기반 모델 관련 산출물은 해당 라이선스를 충족하는 범위에서만 다룹니다.

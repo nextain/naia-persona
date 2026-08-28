@@ -5,7 +5,7 @@
 후보로 내보낸다. 이 프로젝트는 후보를 검증·동결·분할해 재현 가능한 LoRA 학습
 입력으로 만든다.
 
-파이프라인 구현과 데이터 계약은 공개 프로젝트의 일부다. 반면 개인 Alpha의 원문,
+파이프라인 구현과 데이터 계약은 공개 프로젝트의 일부다. 반면 개인 사용자의 원문,
 컴파일된 dataset, 평가 응답과 adapter는 운영자 소유의 비공개 데이터이며
 `data-private/` 경계 밖으로 내보내지 않는다. 공개 테스트 fixture는 개인 데이터에서
 추출하거나 일부를 바꾸어 만들지 않고 처음부터 합성한다.
@@ -18,7 +18,7 @@
 이메일·전화번호·주민번호·토큰처럼 보이는 값은 검증 단계에서 거부한다.
 
 ```json
-{"messages":[{"role":"user","content":"일정을 정리해줘"},{"role":"assistant","content":"좋아. 우선순위부터 잡아볼게."}],"meta":{"consent":true,"source_id":"persona-alpha-0001","source_type":"persona"}}
+{"messages":[{"role":"user","content":"일정을 정리해줘"},{"role":"assistant","content":"좋아. 우선순위부터 차분히 정리해볼게."}],"meta":{"consent":true,"source_id":"persona-naia-0001","source_type":"persona"}}
 ```
 
 ## 페르소나와 대화 학습의 분리
@@ -39,9 +39,9 @@
 ## 컴파일
 
 ```bash
-python3 scripts/validate_dataset.py data-private/incoming/persona-alpha.jsonl
-python3 scripts/compile_dataset.py data-private/incoming/persona-alpha.jsonl \
-  data-private/datasets/persona-alpha-v1 --dataset-name persona-alpha-v1
+python3 scripts/validate_dataset.py examples/naia-v1/source.jsonl
+python3 scripts/compile_dataset.py examples/naia-v1/source.jsonl \
+  data-private/datasets/naia-v1 --dataset-name naia-v1 --seed naia-v1
 ```
 
 컴파일러는 입력 순서와 무관하게 `source_id`와 명시적 seed로 train/holdout을

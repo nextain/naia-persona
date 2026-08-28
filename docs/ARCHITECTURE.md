@@ -40,4 +40,4 @@ client → memory/RAG → response
 
 2026-08-26에 GPU1 RTX 3090 24GB에서 Qwen3.8-27B QLoRA의 데이터 컴파일부터 학습·평가·승격 차단까지 한 번 완주했습니다. 같은 GPU에서 DFlash2가 고정 조건의 단일 스트림 생성 속도를 41.47 tok/s에서 111.95 tok/s로 높이는 것도 확인했습니다.
 
-첫 Alpha 후보는 일반·안전 sanity 점수를 유지했지만 persona 점수가 기준보다 향상되지 않아 승격하지 않았습니다. 학습 중 completion boundary mismatch 경고도 있어 다음 실험 전에 masking 검증을 보강해야 합니다. 이 결과는 8개 프롬프트의 파이프라인 확인이며 대규모 제품 벤치마크가 아닙니다. 상세 조건은 [실험 보고서](./reports/alpha-persona-pipeline-experiment-2026-08-26.md)에 있습니다.
+공개 검증은 Naia reference persona만 사용합니다. 개인 페르소나의 원문·학습 결과·평가 응답은 공개 문서에 포함하지 않습니다. 다음 후보는 completion mask 선검증, 독립 holdout, 일반 능력 비열등성, 개인정보 canary를 모두 통과해야 하며, 소규모 sanity check를 제품 벤치마크로 표현하지 않습니다.

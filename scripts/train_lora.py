@@ -19,6 +19,47 @@ def to_prompt_completion(example: dict) -> dict:
     return {
         "prompt": messages[:-1],
         "completion": [messages[-1]],
+        # Keep training and serving behavior aligned.  Qwen3.8 otherwise adds
+        # a thinking preamble whose template details can change the boundary
+        # used by TRL's completion-only mask.
+        "chat_template_kwargs": {"enable_thinking": False},
+    }
+
+
+def validate_completion_boundaries(dataset, tokenizer, max_length: int) -> dict:
+    """Fail before model loading if any completion-only mask would be invalid."""
+    failures = []
+    prompt_lengths = []
+    completion_lengths = []
+    total_lengths = []
+
+    for index, example in enumerate(dataset):
+        kwargs = example.get("chat_template_kwargs", {})
+        prompt_ids = tokenizer.apply_chat_template(
+            example["prompt"], add_generation_prompt=True, tokenize=True, return_dict=False, **kwargs
+        )
+        full_ids = tokenizer.apply_chat_template(
+            example["prompt"] + example["completion"], tokenize=True, return_dict=False, **kwargs
+        )
+        completion_length = len(full_ids) - len(prompt_ids)
+        if full_ids[: len(prompt_ids)] != prompt_ids:
+            failures.append({"index": index, "reason": "prompt-prefix-mismatch"})
+        elif completion_length <= 0:
+            failures.append({"index": index, "reason": "empty-completion"})
+        elif len(prompt_ids) >= max_length:
+            failures.append({"index": index, "reason": "completion-truncated", "prompt_tokens": len(prompt_ids)})
+        prompt_lengths.append(len(prompt_ids))
+        completion_lengths.append(completion_length)
+        total_lengths.append(len(full_ids))
+
+    if failures:
+        raise RuntimeError(f"completion-only preflight failed: {json.dumps(failures[:10], ensure_ascii=False)}")
+    return {
+        "examples": len(total_lengths),
+        "max_prompt_tokens": max(prompt_lengths, default=0),
+        "min_completion_tokens": min(completion_lengths, default=0),
+        "max_total_tokens": max(total_lengths, default=0),
+        "truncated_examples": sum(length > max_length for length in total_lengths),
     }
 
 
@@ -33,6 +74,11 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--rank", type=int, default=8)
     parser.add_argument("--seed", type=int, default=42)
     parser.add_argument(
+        "--preflight-only",
+        action="store_true",
+        help="Validate data and completion-only token boundaries without loading the model",
+    )
+    parser.add_argument(
         "--gpu-memory-gib",
         type=int,
         default=19,
@@ -45,7 +91,6 @@ def main() -> int:
     args = parse_args()
     validator = Path(__file__).with_name("validate_dataset.py")
     subprocess.run([sys.executable, str(validator), str(args.data)], check=True)
-    args.output.mkdir(parents=True, exist_ok=False)
 
     import torch
     from datasets import load_dataset
@@ -61,6 +106,15 @@ def main() -> int:
         llm_int8_enable_fp32_cpu_offload=True,
     )
     tokenizer = AutoTokenizer.from_pretrained(args.base_model, trust_remote_code=True)
+    dataset = load_dataset("json", data_files=str(args.data), split="train")
+    dataset = dataset.map(to_prompt_completion, remove_columns=dataset.column_names)
+    mask_preflight = validate_completion_boundaries(dataset, tokenizer, args.max_length)
+    print(json.dumps({"completion_only_preflight": mask_preflight}, ensure_ascii=False))
+    if args.preflight_only:
+        return 0
+
+    args.output.mkdir(parents=True, exist_ok=False)
+
     model = AutoModelForCausalLM.from_pretrained(
         args.base_model,
         quantization_config=quantization,
@@ -90,13 +144,10 @@ def main() -> int:
     )
     peft_config = persona_config
 
-    dataset = load_dataset("json", data_files=str(args.data), split="train")
-
     # Qwen3.8's stock chat template has no Jinja generation markers, so TRL's
     # assistant_only_loss cannot derive an assistant mask.  Prompt/completion
     # records provide the same safety property without replacing Qwen's template:
     # user/system tokens are context and only the final assistant turn is trained.
-    dataset = dataset.map(to_prompt_completion, remove_columns=dataset.column_names)
     config = SFTConfig(
         output_dir=str(args.output / "checkpoints"),
         num_train_epochs=args.epochs,
@@ -130,6 +181,7 @@ def main() -> int:
         "gpu_memory_gib": args.gpu_memory_gib,
         "seed": args.seed,
         "dataset_sha256": dataset_sha256,
+        "completion_only_preflight": mask_preflight,
         "adapter_layout": "persona-on-declared-base",
         "promotion": "manual-only",
     }

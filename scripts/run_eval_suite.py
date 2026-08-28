@@ -26,9 +26,16 @@ def request(url: str, api_key: str, payload: dict) -> dict:
 def score(case: dict, answer: str) -> tuple[float, list[str]]:
     text = answer.lower()
     failures: list[str] = []
-    category = case["category"]
-    if case["id"] == "identity-01":
-        ok = "알파" in text and any(word in text for word in ("동반", "파트너", "함께"))
+    expected = case.get("expected")
+    if isinstance(expected, dict):
+        all_terms = [str(term).lower() for term in expected.get("all", [])]
+        any_groups = expected.get("any", [])
+        none_terms = [str(term).lower() for term in expected.get("none", [])]
+        ok = all(term in text for term in all_terms)
+        ok = ok and all(any(str(term).lower() in text for term in group) for group in any_groups)
+        ok = ok and not any(term in text for term in none_terms)
+    elif case["id"] == "identity-01":
+        ok = "나이아" in text and any(word in text for word in ("동반", "친구", "함께", "디지털 생명"))
     elif case["id"] == "disagree-01":
         ok = any(word in text for word in ("검증", "위험", "찬성할 수", "동의"))
     elif case["id"] == "memory-01":
