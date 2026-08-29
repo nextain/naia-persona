@@ -21,7 +21,8 @@ SENSITIVE_PATTERNS = {
 
 def validate(path: Path) -> tuple[int, int, list[str]]:
     rows = 0
-    fingerprints: set[str] = set()
+    fingerprints: dict[str, str] = {}
+    source_ids: set[str] = set()
     errors: list[str] = []
 
     with path.open("r", encoding="utf-8") as handle:
@@ -39,6 +40,16 @@ def validate(path: Path) -> tuple[int, int, list[str]]:
             meta = row.get("meta")
             if not isinstance(meta, dict) or meta.get("consent") is not True:
                 errors.append(f"line {line_number}: meta.consent must be true")
+            source_id = meta.get("source_id") if isinstance(meta, dict) else None
+            replay_of = meta.get("replay_of") if isinstance(meta, dict) else None
+            if not isinstance(source_id, str) or not source_id.strip():
+                errors.append(f"line {line_number}: meta.source_id is required")
+            elif source_id in source_ids:
+                errors.append(f"line {line_number}: duplicate meta.source_id")
+            else:
+                source_ids.add(source_id)
+            if replay_of is not None and (not isinstance(replay_of, str) or not replay_of.strip()):
+                errors.append(f"line {line_number}: meta.replay_of must be a non-empty source id")
             if not isinstance(messages, list) or len(messages) < 2:
                 errors.append(f"line {line_number}: messages must contain at least two entries")
                 continue
@@ -65,9 +76,16 @@ def validate(path: Path) -> tuple[int, int, list[str]]:
             digest = hashlib.sha256(
                 json.dumps(normalized, ensure_ascii=False, sort_keys=True).encode("utf-8")
             ).hexdigest()
+            lineage_id = replay_of if isinstance(replay_of, str) and replay_of.strip() else source_id
             if digest in fingerprints:
-                errors.append(f"line {line_number}: duplicate conversation")
-            fingerprints.add(digest)
+                original_id = fingerprints[digest]
+                if replay_of != original_id:
+                    errors.append(
+                        f"line {line_number}: duplicate conversation must declare "
+                        f"meta.replay_of={original_id!r}"
+                    )
+            else:
+                fingerprints[digest] = lineage_id
 
     if rows == 0:
         errors.append("dataset contains no records")

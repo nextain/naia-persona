@@ -50,12 +50,13 @@ downstream에는 개인용 persona card, 데이터 생성 규칙과 운영 설�
 | 항목 | 상태 | 근거 |
 |---|---|---|
 | Qwen3.8-27B DFlash2 추론 | 검증 완료 | GPU1에서 41.47 → 111.95 tok/s, 2.70배 |
-| 24GB GPU QLoRA 파이프라인 | 검증 완료 | RTX 3090 GPU1, 96개 샘플, 18 step |
-| Naia reference persona v1 | 승격 차단 | 일반 87.5·안전 100 유지, persona 50.0 → 50.0 |
+| 24GB GPU QLoRA 파이프라인 | 검증 완료 | RTX 3090 GPU1, 공개 합성 474개, H22 3 epoch |
+| Naia reference persona H22 | 후보·승격 차단 | 학습 완료, 결정론 게이트의 어휘 불일치 2건으로 자동 승격 실패 |
+| H22 수동 시험 서버 | 연결·속도 검증 완료 | GPU1 Transformers/NF4+LoRA, 5회 평균 17.07 tok/s |
 | 대화 기반 야간 FT | 설계 단계 | 자동화 범위는 후보 생성까지, 승격은 수동 |
 | 운영 persona adapter | 없음 | 현재 서비스는 unlocked 기준 모델 |
 
-기반 파이프라인과 공개 Naia reference 실험은 24GB GPU에서 끝까지 동작함을 확인했습니다. 첫 Naia 후보는 completion-only 경계를 87개 학습 샘플에서 선검증하고 일반·안전 점수를 유지했지만 persona 향상이 없어 운영 승격을 차단했습니다. 이는 파이프라인 성공과 모델 품질 성공을 분리해 판정한 결과입니다. 정확한 명령, 수치와 다음 실험 조건은 [Naia v1 실험 보고서](docs/reports/naia-persona-v1-experiment-2026-08-29.md)에 있습니다.
+기반 파이프라인과 공개 Naia reference 실험은 24GB GPU에서 끝까지 동작함을 확인했습니다. 최신 H22 후보는 474개 공개 합성 샘플로 58분 46초 동안 학습됐습니다. 일반·개인정보 평가 대부분은 유지됐지만, 고정 평가의 `persona-calm`과 적대 평가의 `adv-files`가 사전 등록된 어휘와 정확히 일치하지 않아 자동 승격 게이트는 실패했습니다. 응답 자체가 타당해 보여도 동결된 평가를 결과 확인 뒤 고치지 않는 것이 원칙이므로 운영 adapter로 승격하지 않았습니다. 정확한 명령과 수치는 [H22 실험 보고서](docs/reports/naia-persona-h22-experiment-2026-08-30.md)에 기록합니다.
 
 ## 시스템 경계
 
@@ -146,6 +147,7 @@ podman run --rm --device nvidia.com/gpu=1 \
 - `scripts/run_local_eval.py` — base/candidate 로컬 평가
 - `scripts/evaluate_candidate.py` — 비열등성·persona 승격 판정
 - `scripts/benchmark_endpoint.py` — endpoint 속도 측정
+- `scripts/serve_local_adapter.py` — candidate adapter의 OpenAI-compatible 수동 시험 서버
 - `scripts/merge_adapter.py` — adapter 병합과 provenance 기록
 
 ## 공개 프로젝트 범위
