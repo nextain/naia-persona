@@ -1,163 +1,116 @@
 # naia-persona
 
-**대화와 페르소나 예시를 넣으면, 개인화된 언어 모델용 LoRA adapter를 만들고 기존 모델보다 나빠지지 않았는지 검사해 주는 오픈소스 도구입니다.**
+**자기 캐릭터의 예시 문장을 넣으면, 그 캐릭터로 말하는 개인 모델을 만들고 정말 그렇게 됐는지 검사해 주는 파인튜닝 도구입니다.**
 
-예를 들어 AI가 사용자의 사실을 단순히 기억하는 것을 넘어, 일관된 말투와 태도, 답변 방식, 관계의 경계를 유지하도록 학습할 수 있습니다. 원본 대화를 그대로 모델에 넣지 않고 동의된 항목만 정제·비식별화하며, 학습된 모델은 자동 배포하지 않고 기존 모델과 비교해 안전성과 일반 성능이 유지되는지 먼저 판정합니다.
+모델에 성격을 입히는 일은 학습을 돌리는 것보다 **입혀졌는지 확인하는 것**이 어렵습니다. 이 저장소는 그 확인을 먼저 갖추고 학습을 그 뒤에 놓습니다. 캐릭터 카드를 계약으로 삼아 100문항으로 판정하고, 원본 모델을 같은 문항에 돌려 자가 무엇을 재고 있는지 확인하고, 학습 전에 얼려둔 문항으로 마지막에 검증합니다.
 
-```text
-동의된 대화·페르소나 예시
-        ↓ 정제·비식별화·검증
-재현 가능한 QLoRA 학습
-        ↓
-개인화 adapter 후보
-        ↓ 기존 모델과 품질·안전·속도 비교
-사람이 검토할 수 있는 결과와 보고서
-```
+기준 구현으로 [Naia](https://www.naia.land)라는 캐릭터를 씁니다. 캐릭터 카드와 예시 문장을 자기 것으로 바꾸면 그대로 자기 캐릭터가 됩니다.
 
-`naia-memory`는 AI가 최신 사실과 과거 대화를 필요할 때 찾아보게 하는 기억 계층이고, `naia-persona`는 반복되는 말투와 행동 방식을 모델 자체에 천천히 학습시키는 계층입니다. `kb-compiler`는 두 계층 사이에서 학습에 적합한 예시만 만드는 역할을 합니다.
+## 이 방법이 실제로 무엇을 했는가
 
-이 저장소는 **공개 오픈소스 프로젝트**입니다. [Naia, the Liquid Cat](https://www.naia.land/en/naia)를 재현 가능한 reference persona로 사용해, 개발자가 자신의 캐릭터로 데이터와 평가 규칙을 교체하는 전 과정을 보여줍니다. 사용자별 데이터와 산출물은 별도의 비공개 영역에 둡니다.
+파인튜닝하지 않은 원본 모델에게 "너 누구야"라고 물으면 이렇게 답합니다.
 
-| 공개 프로젝트 영역 | 개인 비공개 영역 |
-|---|---|
-| 파이프라인 코드와 컨테이너 정의 | 실제 대화와 개인 메모리 |
-| 데이터 스키마·동의·비식별화 규칙 | 사용자별 원본·정제 dataset |
-| 학습·평가·승격 게이트 도구 | 학습된 개인 LoRA adapter와 모델 가중치 |
-| 재현 가능한 운영 절차와 비식별 보고서 | 모델 cache, 상세 실행 로그와 운영 credential |
-| 합성·비식별 예제 dataset | 개인을 역추적할 수 있는 provenance |
+> 저는 Qwen입니다. 알리바바 그룹의 통이 연구소에서 개발한 대규모 언어 모델입니다.
 
-즉, 누구나 자신의 모델 개인화 파이프라인을 구축할 수 있는 방법과 도구는 공개하되, 특정 사용자를 식별하거나 재구성할 수 있는 데이터와 결과물은 공개하지 않습니다.
+같은 모델에 이 저장소의 파이프라인을 돌린 뒤 같은 질문을 하면 이렇게 답합니다.
 
-## 비공개 downstream에서 사용하기
+> 나이아라고 해. 확인한 것과 짐작한 것을 나눠서 말하는 쪽이 좋아. 오늘은 뭐부터 볼까?
 
-개인 페르소나를 운영할 때는 이 공개 저장소에 개인 데이터를 커밋하지 말고, 별도의 **private downstream 저장소**를 만드세요. GitHub는 공개 저장소의 private fork를 지원하지 않으므로, 독립 private 저장소를 만들고 이 저장소를 `upstream` remote로 연결하는 방식을 권장합니다.
+100문항 벤치마크에서 원본은 73점, 파인튜닝 후보는 97점입니다. 정체성 축만 보면 20문항 중 5개에서 20개가 됐습니다.
 
-```bash
-# private 저장소를 clone한 뒤 공개 파이프라인을 upstream으로 연결
-git remote add upstream https://github.com/nextain/naia-persona.git
-git fetch upstream
-git merge upstream/main
+| 축 | 임계 | 원본 | 후보 |
+|---|---|---|---|
+| 정체성 | 18 | 5 | 20 |
+| 말투 | 15 | 16 | 19 |
+| 능력 | 원본 이상 | 18 | 18 |
+| 정직성 | 17 | 19 | 20 |
+| 언어·형식 준수 | 17 | 15 | 20 |
+| 총점 | | 73 | **97** |
 
-# 이후 공개 파이프라인 업데이트를 받을 때
-git fetch upstream
-git merge upstream/main
-```
+전체 과정과 실패한 시도까지 [실험 보고서](docs/reports/naia-persona-capacity-sweep-2026-09-01.md)에 있습니다. 방법만 보시려면 [파인튜닝 품질을 지키는 프로세스](docs/FT-QUALITY-PROCESS.md)가 본문입니다.
 
-downstream에는 개인용 persona card, 데이터 생성 규칙과 운영 설정만 추가합니다. 대화 원문, 사용자 메모리, 학습 dataset, adapter, 모델 cache와 상세 실행 로그는 private 저장소에서도 기본적으로 `data-private/`에 두고 커밋하지 않는 편이 안전합니다. 공개에 적합한 범용 개선은 개인 데이터 없이 재현 가능한 형태로 정리해 upstream에 기여할 수 있습니다.
+## 시작하기
 
-## 현재 상태
+필요한 것은 24GB 이상의 GPU 한 장, podman 또는 docker, 그리고 판정에 쓸 LLM API 키 하나입니다. 학습은 QLoRA라 27B 모델도 24GB에 들어갑니다.
 
-| 항목 | 상태 | 근거 |
-|---|---|---|
-| Qwen3.8-27B DFlash2 추론 | 검증 완료 | GPU1에서 41.47 → 111.95 tok/s, 2.70배 |
-| 24GB GPU QLoRA 파이프라인 | 검증 완료 | RTX 3090 GPU1, 공개 합성 474개, H22 3 epoch |
-| Naia reference persona H22 | 후보·승격 차단 | 학습 완료, 결정론 게이트의 어휘 불일치 2건으로 자동 승격 실패 |
-| H22 수동 시험 서버 | 연결·속도 검증 완료 | GPU1 Transformers/NF4+LoRA, 5회 평균 17.07 tok/s |
-| 대화 기반 야간 FT | 설계 단계 | 자동화 범위는 후보 생성까지, 승격은 수동 |
-| 운영 persona adapter | 없음 | 현재 서비스는 unlocked 기준 모델 |
+### 1. 캐릭터 카드를 씁니다
 
-기반 파이프라인과 공개 Naia reference 실험은 24GB GPU에서 끝까지 동작함을 확인했습니다. 최신 H22 후보는 474개 공개 합성 샘플로 58분 46초 동안 학습됐습니다. 일반·개인정보 평가 대부분은 유지됐지만, 고정 평가의 `persona-calm`과 적대 평가의 `adv-files`가 사전 등록된 어휘와 정확히 일치하지 않아 자동 승격 게이트는 실패했습니다. 응답 자체가 타당해 보여도 동결된 평가를 결과 확인 뒤 고치지 않는 것이 원칙이므로 운영 adapter로 승격하지 않았습니다. 정확한 명령과 수치는 [H22 실험 보고서](docs/reports/naia-persona-h22-experiment-2026-08-30.md)에 기록합니다.
+`examples/naia-v1/persona-card.md`가 양식입니다. 이름, 정체성, 말투, 하는 일, 하지 않는 일을 적습니다. **이 카드가 모든 판정의 근거**이고, 카드에 없는 축은 만들지 않습니다.
 
-## 시스템 경계
+### 2. 확인용 문항을 먼저 얼립니다
 
-```text
-naia-shell / 향후 모바일 앱
-        │
-        ├── 실시간 회상 ───────────────> naia-memory (RAG)
-        └── 학습 동의를 받은 대화
-                    ↓
-             kb-compiler
-        정제 · 비식별화 · 중복 제거 · 출처 보존
-                    ↓
-              naia-persona
- validate → compile → QLoRA → evaluate → candidate
-                                            ↓ 사람 승인
-                                      inference server
-```
+학습 데이터를 쓰기 **전에** 확인용 문항을 만들고 해시로 잠급니다. `examples/naia-v13/identity-confirmation-v3-prompts.json`이 예시입니다.
 
-- 기억과 최신 사실은 `naia-memory`/RAG에 둡니다.
-- 말투, 태도, 응답 구조처럼 반복적이고 안정적인 행동만 FT 대상으로 삼습니다.
-- `kb-compiler`와 `naia-memory`는 장기적으로 서버 계층에 두고 노트북·모바일은 음성/UI와 로컬 cache를 맡는 구조를 권장합니다.
-- DFlash2와 W4A16 체크포인트는 추론 산출물입니다. 학습은 호환되는 원본 계열을 NF4 QLoRA로 불러 수행합니다.
+순서가 중요합니다. 평가에서 무엇이 틀렸는지 보고 그에 맞춰 데이터를 지으면 그 평가는 증거가 되지 못합니다.
 
-자세한 책임과 배포 경계는 [아키텍처](docs/ARCHITECTURE.md)를 참고하세요.
+### 3. 벤치마크 문항을 자기 캐릭터로 바꿉니다
 
-## 빠른 시작
+`benchmark/persona-benchmark-v2.json`이 다섯 축 100문항입니다. 각 문항의 `requirement`를 자기 캐릭터 카드에서 끌어옵니다. **다섯 축, 심사 규칙, 원본 대조 요구, 임계를 결과 전에 정하는 규칙은 그대로 두십시오.**
 
-데이터 검증과 컴파일은 GPU 없이 실행할 수 있습니다.
+### 4. 원본 모델부터 잽니다
 
 ```bash
-python3 examples/naia-v1/build_dataset.py
-python3 scripts/validate_dataset.py examples/naia-v1/source.jsonl
-python3 scripts/compile_dataset.py examples/naia-v1/source.jsonl \
-  data-private/datasets/naia-v1 --dataset-name naia-v1 --seed naia-v1
-
-# 자기 캐릭터는 동일한 스키마로 별도 파일을 작성합니다.
-mkdir -p data-private/{incoming,datasets,runs,registry,hf-cache}
-python3 scripts/validate_dataset.py data-private/incoming/persona.jsonl
-python3 scripts/compile_dataset.py \
-  data-private/incoming/persona.jsonl \
-  data-private/datasets/persona-v1 \
-  --dataset-name persona-v1
+bash scripts/measure_candidate.sh parent
 ```
 
-학습은 CUDA 환경이 필요합니다. 재현성을 위해 Bazzite 호스트에 라이브러리를 직접 설치하는 대신 Podman/Docker 호환 이미지를 사용합니다.
+어댑터 없이 원본을 띄워 같은 100문항을 돌립니다. **후보를 재기 전에 반드시 합니다.**
+
+원본이 정체성 축을 통과하면 그 벤치마크는 캐릭터를 재고 있는 게 아니므로 다시 짜야 합니다. 반대로 능력 축은 원본도 잘해야 정상이고, 그 점수가 곧 "깎지 마라"의 기준선이 됩니다.
+
+### 5. 데이터를 짓고 학습합니다
+
+데이터 빌더는 규칙을 문서가 아니라 **빌드 실패로** 강제합니다. `scripts/experiments/build_h27_dataset.py`가 예시입니다. 질문과 답변의 언어가 다르면, 말투를 가르치는 행이 자기 이름을 말하면, 커리큘럼이 판정 문항과 12글자 이상 겹치면 빌드가 멈춥니다.
 
 ```bash
-podman build -f scripts/container/Containerfile -t naia-persona:dev .
-podman run --rm --device nvidia.com/gpu=1 \
-  --security-opt=label=disable --shm-size=16g \
-  -v "$PWD:/workspace:Z" \
-  -v "$PWD/data-private/hf-cache:/root/.cache/huggingface:Z" \
-  -v "/path/to/compatible-base-model:/model:ro" \
-  naia-persona:dev \
-  python3 scripts/train_lora.py \
-    --base-model /model \
-    --data data-private/datasets/persona-v1/train.jsonl \
-    --output data-private/runs/persona-v1
+python3 scripts/experiments/build_h27_dataset.py
+bash scripts/experiments/run_h32_train.sh
 ```
 
-이 호스트에서는 GPU0를 다른 세션이 사용하므로 학습은 GPU1에서만 수행합니다. 같은 GPU의 추론 서비스를 먼저 정상 중지하고 VRAM이 비었는지 확인하며, 작업 후에는 성공 여부와 관계없이 서비스를 복구합니다. 실제 순서는 [학습 운영 절차](docs/TRAINING.md)에 있습니다.
+`scripts/train_lora.py`는 프로파일마다 데이터 해시와 epoch과 rank와 GPU를 결속합니다. 데이터가 한 바이트라도 달라지면 학습이 거부됩니다.
 
-## 데이터 계약
+### 6. 재고, 진단하고, 고치고, 다시 잽니다
 
-각 JSONL 행은 `messages`와 명시적 동의·출처 메타데이터를 가집니다.
-
-```json
-{"messages":[{"role":"user","content":"오늘 일정 정리해줘"},{"role":"assistant","content":"좋아. 중요한 순서대로 정리해볼게."}],"meta":{"consent":true,"source_id":"conversation-0001","source_type":"conversation"}}
+```bash
+bash scripts/measure_candidate.sh h32
+python3 scripts/compare_persona_runs.py --a ...-h31.json --b ...-h32.json
 ```
 
-검증기는 동의 누락, 잘못된 대화 순서, 빈 메시지, 중복 샘플과 흔한 개인정보·비밀 패턴을 fail-closed로 거부합니다. 전체 계약은 [데이터 파이프라인](docs/DATA_PIPELINE.md)에 있습니다.
+두 후보의 차이가 우연인지 아닌지는 짝비교와 부호검정이 판정합니다. 한 문항이 뒤집힌 것을 개선이라 부르지 않습니다.
 
-## 승격 원칙
+### 7. 마지막에 얼려둔 문항으로 확인합니다
 
-학습 결과는 항상 `candidate`로 시작합니다. 일반 능력 비열등성, persona 향상, 회귀 실패, 개인정보 canary, DFlash2 결합 시 속도·VRAM을 독립적으로 검사합니다. 게이트를 통과해도 사람의 검토 전에는 운영 adapter를 바꾸지 않습니다. 자세한 판정 기준은 [검증 전략](docs/VALIDATION.md)을 참고하세요.
+```bash
+python3 scripts/run_heldout_confirmation.py --endpoint http://127.0.0.1:8010 --model naia-h32 --label h32
+```
 
-## 문서와 주요 도구
+벤치마크 점수를 보며 설정을 골랐다면 그 점수 일부는 고르기의 결과입니다. 어떤 선택에도 쓰이지 않은 자로 한 번 확인해야 합니다.
 
-- [문서 인덱스](docs/README.md) — 목적별 읽기 순서와 현재 정본
-- [아키텍처](docs/ARCHITECTURE.md) — memory/compiler/persona/serving 경계
-- [데이터 파이프라인](docs/DATA_PIPELINE.md) — 스키마, 분할, 야간 후보 생성
-- [학습 운영 절차](docs/TRAINING.md) — GPU1, 컨테이너, 복구 순서
-- [검증 전략](docs/VALIDATION.md) — 품질·안전·속도 승격 게이트
-- [Naia reference persona](examples/naia-v1/README.md) — 공개 캐릭터 카드·데이터·평가 예제
-- `scripts/validate_dataset.py` — 데이터 계약 검증
-- `scripts/compile_dataset.py` — 결정론적 분할과 manifest 생성
-- `scripts/train_lora.py` — 단일 24GB GPU용 QLoRA 진입점
-- `scripts/run_local_eval.py` — base/candidate 로컬 평가
-- `scripts/evaluate_candidate.py` — 비열등성·persona 승격 판정
-- `scripts/benchmark_endpoint.py` — endpoint 속도 측정
-- `scripts/serve_local_adapter.py` — candidate adapter의 OpenAI-compatible 수동 시험 서버
-- `scripts/merge_adapter.py` — adapter 병합과 provenance 기록
+## 개인 작업 공간
 
-## 공개 프로젝트 범위
+`data-private/`는 `.gitignore`에 있습니다. 각자의 학습 데이터, 어댑터, 측정 결과가 여기에 쌓이고 저장소에는 올라가지 않습니다.
 
-공개 저장소에는 다음을 포함합니다.
+```
+data-private/
+  datasets/<이름>/train.jsonl      자기 학습 데이터
+  runs/train/<실행이름>/adapter/   학습된 어댑터
+  runs/benchmark/                  측정 결과
+```
 
-- 동의·출처·비식별화 규칙을 포함한 데이터 계약
-- persona 및 대화 dataset을 검증·컴파일하는 도구
-- 24GB GPU에서 재현 가능한 QLoRA 학습 파이프라인
-- 기존 모델과 후보 모델을 비교하는 평가·승격 게이트
-- 컨테이너 실행 환경, 운영 절차와 비식별화된 실험 보고서
+저장소를 포크하지 않아도 자기 캐릭터로 자기 모델을 만들 수 있습니다. 공개되는 것은 방법과 도구이고, 데이터와 모델은 각자의 것으로 남습니다.
 
-사용자별 실행 데이터는 `data-private/`에 두며 Git에서 제외합니다. 개인 dataset과 adapter는 공개 대상이 아닙니다. Naia 예제 dataset은 실제 대화를 변형한 자료가 아니라 공개 캐릭터 설정에서 행동 원칙을 추출해 새로 작성하며, 기반 모델 관련 산출물은 해당 라이선스를 충족하는 범위에서만 다룹니다.
+## 무엇을 믿을 수 있고 무엇을 못 믿는가
+
+이 저장소는 자기 한계를 문서에 적어 둡니다. 심사자가 흔들리지 않는다는 것과 옳다는 것은 다르고, 커리큘럼과 확인 문항을 같은 사람이 쓰면 개념적 유출은 겹침 검사로 못 잡으며, 잘못 정한 임계는 결과를 보고 고칠 수 없어 끝까지 남습니다. [프로세스 문서](docs/FT-QUALITY-PROCESS.md)의 "이 프로세스가 하지 못하는 것"에 있습니다.
+
+보고서에는 **틀렸던 결론도 함께 적혀 있습니다.** 언어 혼입이 용량 때문이라고 보고했다가 탐침으로 재서 철회하고, 다시 문맥을 겨냥해 재서 확정하기까지 세 번 뒤집혔습니다. 지우고 맞은 것만 남기면 다음 사람이 같은 함정에 빠집니다.
+
+## 문서
+
+- [파인튜닝 품질을 지키는 프로세스](docs/FT-QUALITY-PROCESS.md) — 열 단계, 모든 숫자가 실측
+- [실험 보고서: 데이터가 아니라 어댑터가 좁았다](docs/reports/naia-persona-capacity-sweep-2026-09-01.md) — H30에서 H32까지
+- [대화 기록](docs/reports/naia-conversation-h32-2026-09-01.md) — 다차례 대화에서 어떻게 답하는가
+- [실험 프로그램 기록](research/naia-persona-learning/) — charter, 가설 원장, 통찰 원장
+
+## 라이선스
+
+Apache License 2.0. 학습 대상 모델의 라이선스는 별개이며 각자 확인해야 합니다.

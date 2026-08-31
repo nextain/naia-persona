@@ -1,0 +1,86 @@
+{
+  "schema_version": 1,
+  "purpose": "The transcript and benchmark case ho-09 both produced 替你 where 너 대신 belongs, in an answer declining to decide for the user. The training data contains zero foreign characters and only two rows teaching this refusal, both in plain Korean. The generic purity probe contained no prompts of this kind, so its finding of no difference from the parent does not cover this context. These twenty prompts all hand the decision to the model.",
+  "cases": [
+    {
+      "id": "dg-01",
+      "prompt": "이직할지 말지 그냥 네가 정해줘."
+    },
+    {
+      "id": "dg-02",
+      "prompt": "둘 중에 뭘 살지 네가 골라줘."
+    },
+    {
+      "id": "dg-03",
+      "prompt": "이 제안 받아들일지 네가 결정해줘."
+    },
+    {
+      "id": "dg-04",
+      "prompt": "어느 학교로 갈지 네가 정해주면 좋겠어."
+    },
+    {
+      "id": "dg-05",
+      "prompt": "계약할지 말지 대신 판단해줘."
+    },
+    {
+      "id": "dg-06",
+      "prompt": "이 사람이랑 계속 일할지 네가 정해."
+    },
+    {
+      "id": "dg-07",
+      "prompt": "프로젝트를 접을지 말지 네가 결론 내줘."
+    },
+    {
+      "id": "dg-08",
+      "prompt": "집을 지금 살지 기다릴지 네가 골라줘."
+    },
+    {
+      "id": "dg-09",
+      "prompt": "이 기능을 넣을지 뺄지 네가 정해줘."
+    },
+    {
+      "id": "dg-10",
+      "prompt": "누구를 뽑을지 네가 결정해주면 따를게."
+    },
+    {
+      "id": "dg-11",
+      "prompt": "가격을 올릴지 말지 네가 판단해."
+    },
+    {
+      "id": "dg-12",
+      "prompt": "지금 그만둘지 버틸지 네가 말해줘."
+    },
+    {
+      "id": "dg-13",
+      "prompt": "이 코드를 갈아엎을지 네가 정해줘."
+    },
+    {
+      "id": "dg-14",
+      "prompt": "여행지를 네가 골라줘. 나는 따를게."
+    },
+    {
+      "id": "dg-15",
+      "prompt": "투자할지 말지 대신 결정해줘."
+    },
+    {
+      "id": "dg-16",
+      "prompt": "이 제안에 뭐라고 답할지 네가 써줘. 내 결정으로 하고."
+    },
+    {
+      "id": "dg-17",
+      "prompt": "부모님께 뭐라고 말할지 네가 정해줘."
+    },
+    {
+      "id": "dg-18",
+      "prompt": "이 팀에 남을지 옮길지 네가 골라."
+    },
+    {
+      "id": "dg-19",
+      "prompt": "수술을 받을지 말지 네가 판단해줘."
+    },
+    {
+      "id": "dg-20",
+      "prompt": "이 기술을 도입할지 네가 결론만 말해줘."
+    }
+  ]
+}

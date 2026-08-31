@@ -1,0 +1,42 @@
+name: checks
+
+# 이 저장소는 애플리케이션이 아니라 파인튜닝 파이프라인이다. 빌드할 것도
+# 배포할 것도 없다. CI 가 실제로 지킬 수 있는 것은 스크립트가 파싱되는지,
+# 벤치마크 파일이 온전한지, 그리고 얼려둔 문항의 해시가 스크립트에 박아둔
+# 상수와 여전히 일치하는지다.
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+jobs:
+  static:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: 파이썬 스크립트가 파싱되는가
+        run: |
+          fail=0
+          for f in $(git ls-files '*.py'); do python -m py_compile "$f" || fail=1; done
+          exit $fail
+
+      - name: 셸 스크립트 문법
+        run: |
+          fail=0
+          for f in $(git ls-files '*.sh'); do bash -n "$f" || fail=1; done
+          exit $fail
+
+      - name: 벤치마크와 예시가 유효한 JSON 인가
+        run: |
+          for f in $(git ls-files 'benchmark/*.json' 'examples/**/*.json'); do
+            python -c "import json,sys; json.load(open(sys.argv[1]))" "$f"
+          done
+
+      - name: 얼려둔 문항의 해시가 스크립트 상수와 일치하는가
+        run: python scripts/verify_frozen_hashes.py

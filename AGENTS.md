@@ -1,66 +1,47 @@
-# Naia ADK
+# naia-persona
 
-AI development infrastructure for a solo developer. This repository is the
-public base of the fork chain `naia-adk → {org}-adk → {user}-adk`.
+캐릭터를 언어 모델에 입히고, 정말 입혀졌는지 검사하는 파인튜닝 저장소입니다.
+사람이 읽을 안내는 `README.md`에 있습니다. 이 문서는 이 저장소에서 작업하는
+에이전트를 위한 것입니다.
 
-## Repository Index
+## 먼저 읽을 것
 
-- Repository structure, fork rules, and RBAC: `.agents/context/repo-structure-standard.yaml`
-- Work type to workflow routing: `.agents/context/ai-work-index.yaml`
-- Context and subproject index: `.agents/context/project-index.yaml`
-- AI skill index: `.agents/context/skills-index.yaml`
-- Product requirement index: `.agents/requirements/_index.yaml`
-- Fork-specific additions belong in `FORK.md`, not this shared entrypoint.
+1. `docs/FT-QUALITY-PROCESS.md` — 이 저장소가 따르는 열 단계. 본문입니다.
+2. `examples/naia-v1/persona-card.md` — 모든 판정의 근거가 되는 캐릭터 계약
+3. `benchmark/persona-benchmark-v2.json` — 다섯 축 100문항과 임계, 그리고 임계 변경 이력
 
-## Mandatory Reads
+## 지켜야 할 것
 
-Read these before acting in this repository:
+**떨어진 축의 임계를 낮추거나 문항을 고쳐 통과시키지 않습니다.** 통과는 모델이
+나아져서 오는 것이지 자를 줄여서 오는 것이 아닙니다. 기준을 고칠 수 있는 경우는
+기준이 스스로 모순될 때뿐이고, 교정 근거는 후보의 점수가 아니라 원본 대조군이나
+기준 문서 자신에서 나와야 합니다. 교정하면 전 후보를 다시 판정해 비교 가능한
+기준선을 만들고, 이력을 기준 파일에 날짜와 근거와 함께 남깁니다.
 
-1. `.agents/context/agents-rules.json`
-2. `.agents/context/ai-work-index.yaml`
-3. `.agents/context/project-index.yaml`
-4. `.agents/context/terminology.yaml`
+**지시가 요구하지 않은 품질 축을 추가하지 않습니다.** 이 프로그램은 사용자가 요구한
+적 없는 안전·프라이버시·거부 커리큘럼을 474행 중 235행 학습하고 그것으로 합격을
+판정한 적이 있습니다. 유입 지점은 charter 의 목표 문장 한 줄이었고 22개 가설이
+검토 없이 물려받았습니다. `research/naia-persona-learning/charter.yaml` 의
+`authority_note` 에 적혀 있습니다.
 
-When planning or reviewing feature-level work, also read
-`.agents/requirements/_index.yaml` and `.agents/context/skills-index.yaml`.
+**얼려둔 문항을 수정하지 않습니다.** 세 스크립트가 해시 상수로 거부하고 CI 가
+`scripts/verify_frozen_hashes.py` 로 다시 확인합니다.
 
-## Context Routing
+**후보를 서빙에 자동 승격하지 않습니다.** 사람이 결정합니다.
 
-Load only the on-demand context sections selected by
-`.agents/context/project-index.yaml`. Before any action inside a nested
-project, read that project's own entrypoint and mandatory context. A parent
-workspace does not substitute for a nested project's rules.
+## 개인 데이터
 
-Durable repository rules belong in `.agents/context/`. Per-work execution
-evidence and handoff state belong in `.agents/progress/`.
+`data-private/` 는 `.gitignore` 에 있습니다. 학습 데이터, 어댑터, 측정 결과가
+여기 쌓이고 저장소에는 올라가지 않습니다. 이 경계를 넘겨 커밋하지 않습니다.
 
-## Session Boundaries
+## 구조
 
-These shared entrypoints are repository indexes. They do not contain a work
-goal, issue state, implementation sequence, completion claim, or artifact
-wording.
-
-An unbound session may create and edit ordinary reversible files inside its
-resolved project boundary. Governance and host-policy files, these shared
-entrypoints, deletion, mutating shell commands, external effects, and changes
-that could expand the session's own authority require one explicit local
-contract in `.agents/session-contracts/`. When bound, the registry pointer,
-contract digest, `session_bindings`, and referenced progress record must agree.
-Progress records do not grant authority, and parent or child projects are never
-searched for an implicit binding.
-
-Background context constrains agent work; it is not artifact content unless an
-explicit source atom grants `derive`, `quote`, or `require` authority for
-the declared output audience.
-
-## Safety Boundaries
-
-Follow `.agents/context/agents-rules.json` for authorization, destructive
-actions, external communication, secrets, validation, and lifecycle rules.
-Concurrent contracts must declare non-overlapping `target_ownership` paths.
-
-## Mirrors
-
-`AGENTS.md` is canonical. `CLAUDE.md`, `GEMINI.md`, `OPENCODE.md`, and
-`CODEX.md` must be byte-identical mirrors. Validate the candidate before synchronization with
-`node .claude/hooks/sync-entry-points.js --check`.
+```
+benchmark/     판정 기준. 100문항 벤치마크와 얼려둔 탐침
+examples/      캐릭터 카드, 커리큘럼 예시, 얼려둔 확인 문항
+scripts/       일반 도구 — 학습, 서빙, 측정, 비교, 검증
+scripts/experiments/  기준 구현의 실험별 빌더와 러너
+docs/          프로세스 문서와 실험 보고서
+research/      charter, 가설 원장, 통찰 원장
+data-private/  개인 작업 공간 (추적하지 않음)
+```

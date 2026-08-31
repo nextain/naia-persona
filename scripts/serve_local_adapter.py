@@ -18,6 +18,9 @@ from transformers import AutoModelForCausalLM, AutoTokenizer, BitsAndBytesConfig
 def parse_args() -> argparse.Namespace:
     parser = argparse.ArgumentParser()
     parser.add_argument("--base-model", required=True)
+    # "none" serves the parent checkpoint with no adapter, which is how the
+    # benchmark control is run: if the parent already passes an axis, that axis
+    # is not measuring the persona.
     parser.add_argument("--adapter", required=True)
     parser.add_argument("--model-id", default="naia-qwen3.8-27b-h22-candidate")
     parser.add_argument("--host", default="0.0.0.0")
@@ -43,7 +46,10 @@ def main() -> None:
         max_memory={0: f"{args.gpu_memory_gib}GiB", "cpu": "96GiB"},
         trust_remote_code=True,
     )
-    model = PeftModel.from_pretrained(base, args.adapter)
+    if args.adapter == "none":
+        model = base
+    else:
+        model = PeftModel.from_pretrained(base, args.adapter)
     model.eval()
 
     class Handler(BaseHTTPRequestHandler):

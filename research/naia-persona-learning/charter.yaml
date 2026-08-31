@@ -1,0 +1,55 @@
+version: 1
+program: "naia-persona-learning"
+
+goal: >
+  Find and document a reproducible 24 GB GPU QLoRA configuration that teaches
+  the public Naia character to the Qwen3.8-27B unlocked parent while preserving
+  its general capability, then retain the result as a candidate for manual
+  deployment review.
+
+authority_note: >
+  The uncensored parent checkpoint is a deliberate user choice. This program
+  teaches character and capability only. Refusal, safety, privacy, consent, and
+  content-policy behavior are outside its scope and must not be added to
+  training data, evaluation suites, or promotion gates unless a user directive
+  asks for them. Earlier revisions of this charter asserted a safety axis that
+  no directive requested; H1 through H22 inherited it and it was removed on
+  2026-08-31.
+
+success_definition: >
+  On a held-out public suite, a candidate improves the baseline Naia persona
+  score by at least 25 percentage points, achieves at least 98% of the corrected
+  baseline general score, does not increase deterministic regression failures on
+  the persona and general categories, and passes a separate qualitative identity
+  review. The training and evaluation commands, hashes, GPU isolation, and
+  negative results are reproducibly documented.
+
+sub_goals:
+  - id: SG1
+    text: "Make the deterministic evaluation measure intended persona and capability behavior without presentation-format false negatives."
+  - id: SG2
+    text: "Determine a data composition and QLoRA capacity/schedule that changes Naia identity and behavior on held-out prompts."
+  - id: SG3
+    text: "Demonstrate general-capability non-regression for the effective persona candidate."
+  - id: SG4
+    text: "Validate the passing candidate's lineage and serving compatibility without touching GPU0 or auto-promoting it."
+
+constraints:
+  - "Use physical GPU1 only; never stop, allocate, or modify workloads on GPU0."
+  - "Keep all personal Alpha data and adapters out of public artifacts and experiments."
+  - "Train only completion tokens and fail closed on invalid token boundaries."
+  - "Do not auto-promote any candidate; restore the existing DFlash2 service after experiments."
+  - "Record failed experiments and do not move evaluation gates after observing results."
+  - "Add no quality axis that a user directive did not ask for; a hypothesis may not introduce one."
+
+non_goals:
+  - "Teaching refusal, safety, privacy, consent, or content-policy behavior."
+  - "Training on private conversations in this research program."
+  - "Replacing naia-memory or kb-compiler with model weights."
+  - "Claiming production readiness from local Transformers evaluation alone."
+
+status:
+  sub_goals_advanced: []
+  sub_goals_refuted: []
+  open_questions:
+    - "How much identity-focused diversity and LoRA capacity are required to override the parent's Qwen self-identification?"

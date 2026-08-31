@@ -39,6 +39,13 @@ H19_SUITE_SHA256 = H18_SUITE_SHA256
 H21_SUITE_SHA256 = H19_SUITE_SHA256
 H22_BLIND_SHA256 = "c2cef183f0e344c9676f74442fb8462c3d5cce794a4ab25294c07edad8fa4f8f"
 H22_SUITE_SHA256 = H21_SUITE_SHA256 | {H22_BLIND_SHA256}
+# H23 changes training rows only. The suites, scorer, and decoding are byte-identical to H22.
+H23_SUITE_SHA256 = H22_SUITE_SHA256
+# H24 changes epochs only. Same suites, scorer, and decoding as H23.
+H24_SUITE_SHA256 = H23_SUITE_SHA256
+# H25 adds the held-out identity confirmation suite frozen before its curriculum.
+H25_HELDOUT_SHA256 = "1d0f28f4af9b961a6adf86b281c8e9dc3fb1cde65ca1e006451b1f4b14e8c7e5"
+H25_SUITE_SHA256 = H24_SUITE_SHA256 | {H25_HELDOUT_SHA256}
 
 
 def tree_digest(path: Path) -> str:
@@ -92,7 +99,7 @@ def main() -> None:
     parser.add_argument("--expected-suite-sha256", required=True)
     parser.add_argument("--expected-gpu-uuid", required=True)
     parser.add_argument("--seed", type=int, default=42)
-    parser.add_argument("--profile", choices=["h9", "h11", "h12", "h13", "h14", "h15", "h16", "h17", "h18", "h19", "h20", "h21", "h22"], required=True)
+    parser.add_argument("--profile", choices=["h9", "h11", "h12", "h13", "h14", "h15", "h16", "h17", "h18", "h19", "h20", "h21", "h22", "h23", "h24", "h25"], required=True)
     parser.add_argument(
         "--additional-suite",
         nargs=3,
@@ -155,6 +162,18 @@ def main() -> None:
         args.expected_gpu_uuid != H9_GPU_UUID or args.expected_suite_sha256 not in H22_SUITE_SHA256
     ):
         raise RuntimeError("H22 profile requires a preregistered suite SHA-256 and physical GPU1 UUID")
+    if args.profile == "h23" and (
+        args.expected_gpu_uuid != H9_GPU_UUID or args.expected_suite_sha256 not in H23_SUITE_SHA256
+    ):
+        raise RuntimeError("H23 profile requires a preregistered suite SHA-256 and physical GPU1 UUID")
+    if args.profile == "h24" and (
+        args.expected_gpu_uuid != H9_GPU_UUID or args.expected_suite_sha256 not in H24_SUITE_SHA256
+    ):
+        raise RuntimeError("H24 profile requires a preregistered suite SHA-256 and physical GPU1 UUID")
+    if args.profile == "h25" and (
+        args.expected_gpu_uuid != H9_GPU_UUID or args.expected_suite_sha256 not in H25_SUITE_SHA256
+    ):
+        raise RuntimeError("H25 profile requires a preregistered suite SHA-256 and physical GPU1 UUID")
 
     suite_sha256 = hashlib.sha256(args.suite.read_bytes()).hexdigest()
     if suite_sha256 != args.expected_suite_sha256:
@@ -166,9 +185,15 @@ def main() -> None:
         suite_path = Path(suite_value)
         output_path = Path(output_value)
         allowed_hashes = H11_SUITE_SHA256 if args.profile == "h11" else (
-            H22_SUITE_SHA256 if args.profile == "h22" else H19_SUITE_SHA256
+            H22_SUITE_SHA256 if args.profile == "h22" else (
+                H23_SUITE_SHA256 if args.profile == "h23" else (
+                    H24_SUITE_SHA256 if args.profile == "h24" else (
+                        H25_SUITE_SHA256 if args.profile == "h25" else H19_SUITE_SHA256
+                    )
+                )
+            )
         )
-        if args.profile not in {"h11", "h12", "h13", "h14", "h15", "h16", "h17", "h18", "h19", "h20", "h21", "h22"} or expected_hash not in allowed_hashes:
+        if args.profile not in {"h11", "h12", "h13", "h14", "h15", "h16", "h17", "h18", "h19", "h20", "h21", "h22", "h23", "h24", "h25"} or expected_hash not in allowed_hashes:
             raise RuntimeError("additional suites are restricted to preregistered profile hashes")
         actual_hash = hashlib.sha256(suite_path.read_bytes()).hexdigest()
         if actual_hash != expected_hash:

@@ -1,125 +1,49 @@
-<!-- SPDX-License-Identifier: CC-BY-SA-4.0 -->
-# Contributing to Naia ADK
+# 기여 안내
 
-> Naia ADK is a **workspace scaffold + governance baseline** for AI-assisted work — a
-> structured directory layout, skills, context files, and a dashboard that AI coding
-> tools use as their working environment.
-> This guide explains *what* you can help with and *how*.
+이 저장소는 캐릭터를 언어 모델에 입히고 **정말 입혀졌는지 검사하는** 파이프라인입니다.
+기여를 받을 때 가장 중요하게 보는 것은 코드가 아니라 판정의 정직함입니다.
 
-## First time here? — your first contribution in 15 minutes
+## 무엇을 환영하는가
 
-Don't be intimidated by the workflow below. The Issue-Driven workflow and structure rules
-are for **new features**. **Small changes — typos, docs, translations, small fixes — need
-none of that**; an issue is enough.
+- 다른 캐릭터로 이 절차를 돌려 본 경험과 그때 드러난 한계
+- 벤치마크가 놓치는 결함을 찾아낸 탐침
+- 심사자가 잘못 판정하는 사례. 답변과 요구사항을 함께 붙여 주십시오
+- 다른 기반 모델, 다른 언어에서의 재현 결과
+- 문서의 오류
 
-Setup: [Node.js](https://nodejs.org/) 22+, [pnpm](https://pnpm.io/) (`corepack enable`),
-then `pnpm install`. The dashboard is Next.js and the other packages are plain TypeScript,
-so **no native build tools (Rust, C++) are needed** for most work.
+## 절대 하지 말아야 할 것
 
-Using an AI coding tool (Cursor, Claude Code, …)? Open this folder and paste:
+**떨어진 축의 임계를 낮추거나 문항을 고쳐서 통과시키는 변경은 받지 않습니다.**
+통과는 모델이 나아져서 오는 것이지 자를 줄여서 오는 것이 아닙니다.
 
-> Read this repo's `.github/CONTRIBUTING.md`, `README.md`, and `.agents/context/agents-rules.json`,
-> then suggest 3 'good first issue' candidates I could finish in 30 minutes, which files to edit
-> for each, and whether each needs the full contribution workflow.
+기준을 고칠 수 있는 경우가 하나 있습니다. **기준이 스스로 모순될 때**입니다. 이때도
+교정 근거는 후보의 점수가 아니라 원본 대조군이나 기준 문서 자신에서 나와야 하고,
+교정 뒤에는 전 후보를 다시 판정해 비교 가능한 기준선을 만들며, 이력을
+`benchmark/persona-benchmark-v2.json` 의 `threshold_history` 에 날짜와 근거와 함께
+남겨야 합니다. 실제 사례가 그 파일에 하나 들어 있습니다.
 
-Stuck? Ask on [Discord](https://discord.gg/FGYJN7auty).
+**얼려둔 문항은 수정하지 않습니다.** 세 스크립트가 해시 상수로 거부하고 CI 가
+`scripts/verify_frozen_hashes.py` 로 다시 확인합니다. 문항을 바꿔야 한다면 새 문항을
+새 파일로 얼리고 그 사실을 적으십시오.
 
-## 1. No permission needed
+**요구되지 않은 품질 축을 추가하지 않습니다.** 캐릭터 카드에 없는 것은 판정 대상이
+아닙니다. 이 프로그램은 아무도 요구하지 않은 안전·프라이버시 커리큘럼을 학습 데이터의
+절반 가까이 넣고 그것으로 합격을 판정한 적이 있습니다.
 
-Clone the repo and open it in your AI coding tool (Claude Code, Cursor, opencode,
-Codex, Gemini CLI, …):
+## 개인 데이터
 
-```bash
-git clone https://github.com/nextain/naia-template-project.git
-cd naia-adk
-```
+`data-private/` 는 `.gitignore` 에 있습니다. 학습 데이터, 어댑터, 측정 결과는 여기
+두고 저장소에 올리지 않습니다. 실제 대화나 개인을 식별할 수 있는 내용을 예시로
+제출하지 마십시오.
 
-Then ask your AI tool, in your own language:
+## 변경을 보낼 때
 
-> What is this project, and what is a good first thing I could help with?
+측정으로 뒷받침되는 주장을 보내 주십시오. 문항 하나가 뒤집힌 것은 개선이 아닙니다.
+`scripts/compare_persona_runs.py` 가 짝비교와 부호검정을 해 줍니다.
 
-The [`.agents/`](../.agents/) directory holds the project's vision, structure, and rules.
-Your AI tool reads it and explains the project **in your language**, so you don't have to
-read everything first. Stuck? Ask on [Discord](https://discord.gg/FGYJN7auty).
+바꾼 스크립트가 파싱되는지, 얼려둔 해시가 그대로인지는 CI 가 확인합니다.
 
-## 2. Any language is welcome
+## 보안
 
-- **Issues, pull requests, discussions** — write in any language; maintainers read via AI translation.
-- **Code comments, commit messages, [`.agents/`](../.agents/) context files** — English preferred. If English is hard, submit in your language and a maintainer will help polish it in review.
-
-## 3. The fork chain
-
-Naia ADK is the **base** of a fork chain — you usually *fork* it rather than commit to it directly:
-
-```
-naia-adk            ← base (this repo, public, Apache 2.0)
-  └── {org}-adk     ← organization fork (company data + business submodules)
-        └── {user}-adk  ← personal fork (personal data + project submodules)
-```
-
-Contributions to the **base** are improvements that benefit everyone: the scaffold,
-skills, context standards, the server, and the dashboard. Fork-specific data (under
-`data-*/`, `projects/`) lives in your fork, never here.
-
-## 4. Ways to contribute
-
-| Type | Difficulty | Where to start |
-|---|---|---|
-| Bug report | low | [GitHub Issues](https://github.com/nextain/naia-template-project/issues) with repro steps |
-| Docs | low | [`README.md`](../README.md), [`docs/`](../docs/), [`.users/`](../.users/) |
-| Translation | low | [`.users/`](../.users/) language mirrors |
-| Skills | medium | [`skills/`](../skills/) — reusable AI procedures |
-| Dashboard / server | medium–high | [`packages/dashboard`](../packages/dashboard), [`packages/server`](../packages/server) |
-| Context / governance | medium | [`.agents/`](../.agents/) — one good context file prevents 100 low-quality AI PRs |
-
-> **Security issues** — do not open a public issue. See the [security policy](SECURITY.md) and email `security@nextain.io`.
-
-## 5. Development
-
-Requirements: [Node.js](https://nodejs.org/) 22+, [pnpm](https://pnpm.io/).
-
-```bash
-pnpm install     # install dependencies
-pnpm build       # build all packages (pnpm -r build)
-pnpm test        # run all package test suites (pnpm -r test)
-pnpm dev         # run the server + dashboard together
-```
-
-The workspace is a pnpm monorepo: `core` (workspace introspection), `server` (Fastify
-API), `dashboard` (Next.js UI), `skill-spec` / `skills-builtin` (skills), plus
-adapters like `openclaw-compat` and `naia-anyllm`.
-
-## 6. Contribution workflow
-
-Naia ADK follows **Issue-Driven Development** — for non-trivial changes, capture the
-intent first so humans and AI stay aligned:
-
-1. Pick or open a [GitHub Issue](https://github.com/nextain/naia-template-project/issues).
-2. Make the change. Keep it minimal and never break working code.
-3. Add or update tests, and run `pnpm test`.
-4. Open a PR with the title format `type(scope): summary` referencing the issue.
-
-**PR checklist**
-
-- [ ] Tests pass (`pnpm test`)
-- [ ] Build passes (`pnpm build`)
-- [ ] Commit messages are in English, `type(scope): summary`
-- [ ] No personal/fork data (`data-*/`, machine-specific paths) added
-
-## 7. AI tools
-
-Using AI tools is welcomed and encouraged. If you used one, add a trailer to the commit
-message (recommended, not required):
-
-```
-feat(server): add workspace skills endpoint
-
-Assisted-by: Claude Code
-```
-
-## 8. License
-
-- **Source code** — [Apache License 2.0](https://www.apache.org/licenses/LICENSE-2.0)
-- **AI context** (`.agents/`, `.users/`) — [CC-BY-SA 4.0](https://creativecommons.org/licenses/by-sa/4.0/)
-
-By contributing, you agree your contribution is licensed under these terms.
+보안 문제는 공개 이슈로 올리지 마십시오. [보안 정책](SECURITY.md)을 보고
+`security@nextain.io` 로 알려 주십시오.

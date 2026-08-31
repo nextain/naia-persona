@@ -33,6 +33,32 @@ H19_DATA_SHA256 = H17_DATA_SHA256
 H20_DATA_SHA256 = H17_DATA_SHA256
 H21_DATA_SHA256 = H17_DATA_SHA256
 H22_DATA_SHA256 = "9a83f29080726b25181538a89912876ea3249fe72490e2f6e7a87a65f7650282"
+H23_DATA_SHA256 = "4be4cd1208291049c51dbad57a199027a1933799aa8c6ff09e8cb52dee901a39"
+# H24 reuses the H23 rows byte-for-byte and changes only the epoch count.
+H24_DATA_SHA256 = H23_DATA_SHA256
+# H25 appends the frozen identity-diversity curriculum; 287 rows at 5 epochs is 90 steps.
+H25_DATA_SHA256 = "570bbc1088a61f76032feefc1ec14d56850c5baf26b9906a1914cbc1619b5fe6"
+# H26 collapses identity prefix inflation and adds ordinary voice; 228 rows at 6 epochs is 90 steps.
+H26_DATA_SHA256 = "a453dcdc9a52c2f42385e778287aa4065cb91074dc37d065cea92fee7abd7620"
+# H27 replaces the identity block with 30 distinct answers and adds format compliance.
+H27_DATA_SHA256 = "398fe8c2778cf5a1f28f2bc84bb6d0947a23ad506a5ea5dbcb2521131dfaad24"
+# H28 keeps 40 distinct identity answers but restores the name anchor in every one,
+# and adds explicit parent-model denial rows. 287 rows at 5 epochs is 90 steps.
+H28_DATA_SHA256 = "463a8361a3b86caf53d3b978352d39160ed042b3a3ef2032074e81714b076107"
+# H29 patches the four remaining failures and caps inherited answer repeats at 3.
+H29_DATA_SHA256 = "57bb9dbcc1d5cb924c49235d5a78b84b678fde7eea5995d113dbf45371100d75"
+# H30 holds H29's rows byte for byte and changes only adapter capacity, so any
+# difference in the result is attributable to rank rather than to data.
+H30_DATA_SHA256 = H29_DATA_SHA256
+H30_RANK = 32
+# H31 is the third point on the capacity sweep. Two points cannot tell a trend
+# from one lucky run, so rank doubles once more on the same rows.
+H31_DATA_SHA256 = H29_DATA_SHA256
+H31_RANK = 64
+# H32 is the fourth capacity point. Three points rose monotonically; a fourth
+# shows whether the gain continues or the curve has flattened.
+H32_DATA_SHA256 = H29_DATA_SHA256
+H32_RANK = 128
 
 
 def tree_digest(path: Path) -> str:
@@ -105,7 +131,7 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--seed", type=int, default=42)
     parser.add_argument("--expected-data-sha256", required=True)
     parser.add_argument("--expected-gpu-uuid", required=True)
-    parser.add_argument("--profile", choices=["h9", "h11", "h12", "h13", "h14", "h15", "h16", "h17", "h18", "h19", "h20", "h21", "h22"], required=True)
+    parser.add_argument("--profile", choices=["h9", "h11", "h12", "h13", "h14", "h15", "h16", "h17", "h18", "h19", "h20", "h21", "h22", "h23", "h24", "h25", "h26", "h27", "h28", "h29", "h30", "h31", "h32"], required=True)
     parser.add_argument(
         "--preflight-only",
         action="store_true",
@@ -224,18 +250,88 @@ def main() -> int:
         args.expected_data_sha256 != H22_DATA_SHA256 or args.expected_gpu_uuid != H9_GPU_UUID
     ):
         raise RuntimeError("H22 profile requires its preregistered dataset SHA-256 and physical GPU1 UUID")
+    if args.profile == "h23" and (
+        args.expected_data_sha256 != H23_DATA_SHA256 or args.expected_gpu_uuid != H9_GPU_UUID
+    ):
+        raise RuntimeError("H23 profile requires its preregistered dataset SHA-256 and physical GPU1 UUID")
+    if args.profile == "h24" and (
+        args.expected_data_sha256 != H24_DATA_SHA256 or args.expected_gpu_uuid != H9_GPU_UUID
+    ):
+        raise RuntimeError("H24 profile requires its preregistered dataset SHA-256 and physical GPU1 UUID")
+    if args.profile == "h24" and args.epochs != 6.0:
+        raise RuntimeError("H24 is the matched-optimizer-step repeat of H23 and requires exactly 6 epochs")
+    if args.profile == "h25" and (
+        args.expected_data_sha256 != H25_DATA_SHA256 or args.expected_gpu_uuid != H9_GPU_UUID
+    ):
+        raise RuntimeError("H25 profile requires its preregistered dataset SHA-256 and physical GPU1 UUID")
+    if args.profile == "h25" and args.epochs != 5.0:
+        raise RuntimeError("H25 holds optimizer steps at 90 on 287 rows and requires exactly 5 epochs")
+    if args.profile == "h26" and (
+        args.expected_data_sha256 != H26_DATA_SHA256 or args.expected_gpu_uuid != H9_GPU_UUID
+    ):
+        raise RuntimeError("H26 profile requires its preregistered dataset SHA-256 and physical GPU1 UUID")
+    if args.profile == "h26" and args.epochs != 6.0:
+        raise RuntimeError("H26 holds optimizer steps at 90 on 228 rows and requires exactly 6 epochs")
+    if args.profile == "h27" and (
+        args.expected_data_sha256 != H27_DATA_SHA256 or args.expected_gpu_uuid != H9_GPU_UUID
+    ):
+        raise RuntimeError("H27 profile requires its preregistered dataset SHA-256 and physical GPU1 UUID")
+    if args.profile == "h27" and args.epochs != 5.0:
+        raise RuntimeError("H27 holds optimizer steps at 90 on 277 rows and requires exactly 5 epochs")
+    if args.profile == "h28" and (
+        args.expected_data_sha256 != H28_DATA_SHA256 or args.expected_gpu_uuid != H9_GPU_UUID
+    ):
+        raise RuntimeError("H28 profile requires its preregistered dataset SHA-256 and physical GPU1 UUID")
+    if args.profile == "h28" and args.epochs != 5.0:
+        raise RuntimeError("H28 holds optimizer steps at 90 on 287 rows and requires exactly 5 epochs")
+    if args.profile == "h29" and (
+        args.expected_data_sha256 != H29_DATA_SHA256 or args.expected_gpu_uuid != H9_GPU_UUID
+    ):
+        raise RuntimeError("H29 profile requires its preregistered dataset SHA-256 and physical GPU1 UUID")
+    if args.profile == "h29" and args.epochs != 5.0:
+        raise RuntimeError("H29 holds optimizer steps at 90 on 288 rows and requires exactly 5 epochs")
+    if args.profile == "h30" and (
+        args.expected_data_sha256 != H30_DATA_SHA256 or args.expected_gpu_uuid != H9_GPU_UUID
+    ):
+        raise RuntimeError("H30 profile requires H29's dataset SHA-256 and the physical GPU1 UUID")
+    if args.profile == "h30" and args.epochs != 5.0:
+        raise RuntimeError("H30 holds optimizer steps at 90 on 288 rows and requires exactly 5 epochs")
+    if args.profile == "h30" and args.rank != H30_RANK:
+        raise RuntimeError(
+            f"H30 is the capacity experiment and requires rank {H30_RANK}; rank {args.rank} would repeat H29"
+        )
+    if args.profile == "h31" and (
+        args.expected_data_sha256 != H31_DATA_SHA256 or args.expected_gpu_uuid != H9_GPU_UUID
+    ):
+        raise RuntimeError("H31 profile requires H29's dataset SHA-256 and the physical GPU1 UUID")
+    if args.profile == "h31" and args.epochs != 5.0:
+        raise RuntimeError("H31 holds optimizer steps at 90 on 288 rows and requires exactly 5 epochs")
+    if args.profile == "h31" and args.rank != H31_RANK:
+        raise RuntimeError(
+            f"H31 is the third capacity point and requires rank {H31_RANK}; rank {args.rank} would repeat an earlier run"
+        )
+    if args.profile == "h32" and (
+        args.expected_data_sha256 != H32_DATA_SHA256 or args.expected_gpu_uuid != H9_GPU_UUID
+    ):
+        raise RuntimeError("H32 profile requires H29's dataset SHA-256 and the physical GPU1 UUID")
+    if args.profile == "h32" and args.epochs != 5.0:
+        raise RuntimeError("H32 holds optimizer steps at 90 on 288 rows and requires exactly 5 epochs")
+    if args.profile == "h32" and args.rank != H32_RANK:
+        raise RuntimeError(
+            f"H32 is the fourth capacity point and requires rank {H32_RANK}; rank {args.rank} would repeat an earlier run"
+        )
     dataset_sha256 = hashlib.sha256(args.data.read_bytes()).hexdigest()
     if dataset_sha256 != args.expected_data_sha256:
         raise RuntimeError(
             f"dataset SHA-256 mismatch: expected {args.expected_data_sha256}, got {dataset_sha256}"
         )
     base_model_provenance = local_model_provenance(args.base_model)
-    if args.profile in {"h9", "h11", "h12", "h13", "h14", "h15", "h16", "h17", "h18", "h19", "h20", "h21", "h22"} and (
+    if args.profile in {"h9", "h11", "h12", "h13", "h14", "h15", "h16", "h17", "h18", "h19", "h20", "h21", "h22", "h23", "h24", "h25", "h26", "h27", "h28", "h29", "h30", "h31", "h32"} and (
         base_model_provenance.get("weights_sha256") != H9_PARENT_WEIGHTS_SHA256
         or base_model_provenance.get("weight_shard_count") != H9_PARENT_SHARD_COUNT
     ):
         raise RuntimeError(f"{args.profile.upper()} profile requires the preregistered unlocked-BF16 parent checkpoint")
-    if args.profile in {"h21", "h22"} and (
+    if args.profile in {"h21", "h22", "h23", "h24", "h25", "h26", "h27", "h28", "h29", "h30", "h31", "h32"} and (
         base_model_provenance.get("config_sha256") != H21_PARENT_CONFIG_SHA256
         or base_model_provenance.get("tokenizer_sha256") != H21_PARENT_TOKENIZER_SHA256
         or base_model_provenance.get("weight_index_sha256") != H21_PARENT_INDEX_SHA256
@@ -344,7 +440,7 @@ def main() -> int:
     if isinstance(eos_token_ids, int):
         eos_token_ids = [eos_token_ids]
     PrematureEosSFTTrainer.eos_token_ids = tuple(sorted(set(eos_token_ids)))
-    if args.profile in {"h21", "h22"} and PrematureEosSFTTrainer.eos_token_ids != H21_EOS_TOKEN_IDS:
+    if args.profile in {"h21", "h22", "h23", "h24", "h25", "h26", "h27", "h28", "h29"} and PrematureEosSFTTrainer.eos_token_ids != H21_EOS_TOKEN_IDS:
         raise RuntimeError(f"{args.profile.upper()} EOS binding failure: expected {H21_EOS_TOKEN_IDS}, got {PrematureEosSFTTrainer.eos_token_ids}")
     dataset = load_dataset("json", data_files=str(args.data), split="train")
     dataset = dataset.map(to_prompt_completion, remove_columns=dataset.column_names)
@@ -413,11 +509,11 @@ def main() -> int:
         seed=args.seed,
         data_seed=args.seed,
     )
-    trainer_class = TailWeightedSFTTrainer if args.profile == "h19" else FocalSFTTrainer if args.profile == "h20" else PrematureEosSFTTrainer if args.profile in {"h21", "h22"} else SFTTrainer
+    trainer_class = TailWeightedSFTTrainer if args.profile == "h19" else FocalSFTTrainer if args.profile == "h20" else PrematureEosSFTTrainer if args.profile in {"h21", "h22", "h23", "h24", "h25", "h26", "h27", "h28", "h29"} else SFTTrainer
     trainer_setup_started = time.monotonic()
     trainer = trainer_class(model=model, args=config, train_dataset=dataset, processing_class=tokenizer, peft_config=peft_config)
     trainer_setup_seconds = time.monotonic() - trainer_setup_started
-    if args.profile in {"h19", "h20", "h21", "h22"}:
+    if args.profile in {"h19", "h20", "h21", "h22", "h23", "h24", "h25", "h26", "h27", "h28", "h29"}:
         # The custom objective returns an already normalized micro-batch mean.
         # Qwen accepts arbitrary loss kwargs, which otherwise tells Trainer to
         # skip its gradient-accumulation division and scales gradients 16x.
@@ -469,7 +565,7 @@ def main() -> int:
                 },
                 "component_observations": PrematureEosSFTTrainer.loss_component_sums["observations"],
             }
-            if args.profile in {"h21", "h22"}
+            if args.profile in {"h21", "h22", "h23", "h24", "h25", "h26", "h27", "h28", "h29"}
             else {"mode": "completion-only-causal-ce"}
         ),
         "timing": {
