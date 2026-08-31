@@ -13,6 +13,7 @@ byte-identical to H23's, and the epoch count must be the only thing that changed
 
 from __future__ import annotations
 
+import os
 import hashlib
 import json
 from datetime import datetime, timezone
@@ -27,7 +28,7 @@ H23_RUN = REPO / "data-private/runs/train/naia-v12-qwen38-27b-gpu1-r16-e3-lr5e5-
 
 TRAIN_SHA256 = "4be4cd1208291049c51dbad57a199027a1933799aa8c6ff09e8cb52dee901a39"
 
-PARENT = Path("<models>/Qwen3.8-27B-Unlocked-BF16")
+PARENT = Path(os.environ.get("NAIA_PARENT_MODEL", Path.home() / "models" / "Qwen3.8-27B-Unlocked-BF16"))
 PARENT_CONFIG_SHA256 = "00e63206a383837e0eda70dbd8aef807e5a18fa5d52ed1671c96076abcb24c38"
 PARENT_TOKENIZER_SHA256 = "06b9509352d2af50381ab2247e083b80d32d5c0aba91c272ca9ff729b6a0e523"
 PARENT_INDEX_SHA256 = "6b70aea64bb78f3627a3a1885e8847b5ad2fa0184237e5086c3d216a71a1f04c"

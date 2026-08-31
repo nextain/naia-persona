@@ -15,10 +15,13 @@ set -euo pipefail
 LABEL="${1:-}"
 [ -n "$LABEL" ] || { echo "usage: $0 <label>   e.g. $0 h27" >&2; exit 2; }
 
-REPO="<repo>"
-PARENT="<models>/Qwen3.8-27B-Unlocked-BF16"
+# 저장소 루트를 스크립트 자신의 위치에서 구한다. 어느 기계에서도 동작한다.
+REPO="$(cd "$(dirname "${BASH_SOURCE[0]}")"/.. && pwd)"
+# 학습 대상 원본 체크포인트의 위치. 각자 내려받은 곳을 가리킨다.
+PARENT="${NAIA_PARENT_MODEL:-$HOME/models/Qwen3.8-27B-Unlocked-BF16}"
 IMAGE="localhost/naia-persona-train:dev"
-KEYS="<home>/alpha-adk/data-private/key/llm-key.env"
+# 심사자 자격증명. 저장소 밖에 두는 것이 기본이며 환경변수로 바꿀 수 있다.
+KEYS="${NAIA_JUDGE_KEYS:-$REPO/data-private/key/llm-key.env}"
 PORT=8010
 NAME="naia-measure-$LABEL"
 

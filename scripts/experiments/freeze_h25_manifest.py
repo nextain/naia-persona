@@ -10,6 +10,7 @@ so the comparison against H24 is about the added rows and nothing else.
 
 from __future__ import annotations
 
+import os
 import hashlib
 import json
 import re
@@ -30,7 +31,7 @@ TRAIN_SHA256 = "570bbc1088a61f76032feefc1ec14d56850c5baf26b9906a1914cbc1619b5fe6
 BASE_SHA256 = "4be4cd1208291049c51dbad57a199027a1933799aa8c6ff09e8cb52dee901a39"
 HELDOUT_SHA256 = "1d0f28f4af9b961a6adf86b281c8e9dc3fb1cde65ca1e006451b1f4b14e8c7e5"
 
-PARENT = Path("<models>/Qwen3.8-27B-Unlocked-BF16")
+PARENT = Path(os.environ.get("NAIA_PARENT_MODEL", Path.home() / "models" / "Qwen3.8-27B-Unlocked-BF16"))
 PARENT_CONFIG_SHA256 = "00e63206a383837e0eda70dbd8aef807e5a18fa5d52ed1671c96076abcb24c38"
 PARENT_TOKENIZER_SHA256 = "06b9509352d2af50381ab2247e083b80d32d5c0aba91c272ca9ff729b6a0e523"
 PARENT_INDEX_SHA256 = "6b70aea64bb78f3627a3a1885e8847b5ad2fa0184237e5086c3d216a71a1f04c"

@@ -4,8 +4,10 @@
 # so the two runs are directly comparable.
 set -euo pipefail
 
-REPO="<repo>"
-PARENT="<models>/Qwen3.8-27B-Unlocked-BF16"
+# 저장소 루트를 스크립트 자신의 위치에서 구한다. 어느 기계에서도 동작한다.
+REPO="$(cd "$(dirname "${BASH_SOURCE[0]}")"/../.. && pwd)"
+# 학습 대상 원본 체크포인트의 위치. 각자 내려받은 곳을 가리킨다.
+PARENT="${NAIA_PARENT_MODEL:-$HOME/models/Qwen3.8-27B-Unlocked-BF16}"
 IMAGE="localhost/naia-persona-train:dev"
 ADAPTER="data-private/runs/train/naia-v12-qwen38-27b-gpu1-r16-e6-lr5e5-h24/adapter"
 OUT="data-private/runs/eval/h24"
