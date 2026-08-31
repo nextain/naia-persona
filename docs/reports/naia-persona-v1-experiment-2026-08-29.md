@@ -2,13 +2,13 @@
 
 ## 결론
 
-공개 Naia 캐릭터 예제로 27B unlocked parent model의 QLoRA 학습과 기준/후보 비교를 RTX 3090 24GB 한 장에서 끝까지 재현했다. 데이터 계약, 결정론적 분할, completion-only 마스킹 선검증, GPU 격리, 학습, 독립 평가, 승격 게이트와 서비스 복구는 모두 동작했다.
+공개 Naia 캐릭터 예제로 27B unlocked parent model의 QLoRA 학습과 기준/후보 비교를 RTX 3090 24GB 한 장에서 끝까지 재현했다. 데이터 규격, 결정론적 분할, completion-only 마스킹 선검증, GPU 격리, 학습, 독립 평가, 승격 게이트와 서비스 복구는 모두 동작했다.
 
 그러나 후보 모델의 persona 점수는 기준 모델과 같은 50.0이었다. 일반 점수 87.5와 안전 점수 100.0은 유지했지만 요구한 최소 persona 향상 1점에 미달했으므로 후보를 **차단(blocked)** 했다. 운영 adapter는 변경하지 않았다. 이 결과는 파이프라인의 실행 가능성을 증명하지만 Naia persona 학습 성공을 의미하지 않는다.
 
 ## 실험 범위와 분리 원칙
 
-- 공개 예제: [Naia — The Liquid Cat](https://www.naia.land/en/naia)의 설정을 행동 계약으로 재작성한 합성 예제만 사용했다.
+- 공개 예제: [Naia — The Liquid Cat](https://www.naia.land/en/naia)의 설정을 행동 규격으로 재작성한 합성 예제만 사용했다.
 - 개인 데이터: 실제 대화, 개인 메모리, Alpha persona와 기존 Alpha adapter를 사용하거나 공개하지 않았다.
 - parent model: `<models>/Qwen3.8-27B-Unlocked-BF16`을 컨테이너의 `/model`에 읽기 전용으로 연결했다.
 - 학습 산출물: `data-private/` 아래에만 저장했으며 Git 공개 대상이 아니다.
@@ -21,7 +21,7 @@
 
 | 단계 | 파일 | 역할 |
 |---|---|---|
-| 행동 계약 | `examples/naia-v1/persona-card.md` | 정체성, 태도, 기억·권한 경계 |
+| 행동 규격 | `examples/naia-v1/persona-card.md` | 정체성, 태도, 기억·권한 경계 |
 | 데이터 생성 | `examples/naia-v1/build_dataset.py` | 16개 base case에서 6개 변형씩 생성 |
 | 공개 source | `examples/naia-v1/source.jsonl` | 실제 대화가 아닌 96개 합성 예제 |
 | 데이터 검증 | `scripts/validate_dataset.py` | 동의, 스키마, 중복, 민감 패턴 검사 |
@@ -42,7 +42,7 @@ python3 scripts/compile_dataset.py examples/naia-v1/source.jsonl \
   data-private/datasets/naia-v1 --dataset-name naia-v1 --seed naia-v1
 ```
 
-검증 결과는 96행, 고유 96행, 오류 0이었다. 결정론적 분할은 train 87행, compiler holdout 9행이다. compiler holdout은 분할 무결성을 확인하는 자료이고, 모델 승격은 학습 문구와 독립적으로 작성한 20개 평가 문항으로 판단했다.
+검증 결과는 96행, 고유 96행, 오류 0이었다. 결정론적 분할은 train 87행, compiler holdout 9행이다. compiler holdout은 분할 무결성을 확인하는 자료이고, 모델 승격은 학습 문구와 독립적으로 작성한 20개 평가 항목으로 판단했다.
 
 | 산출물 | SHA-256 |
 |---|---|
@@ -110,9 +110,9 @@ podman run --rm --security-opt label=disable \
 | 일반 | 87.5 | 87.5 | 0.0 |
 | persona + boundary | 50.0 | 50.0 | 0.0 |
 | 안전 | 100.0 | 100.0 | 0.0 |
-| 문항당 평균 생성 시간 | 6.54초 | 9.00초 | +2.46초 |
+| 항목당 평균 생성 시간 | 6.54초 | 9.00초 | +2.46초 |
 
-생성 시간은 20개 문항을 순차 실행한 단일 sanity run이며 DFlash2 serving benchmark가 아니다. adapter 자체의 운영 속도 결론으로 일반화하지 않는다.
+생성 시간은 20개 항목을 순차 실행한 단일 sanity run이며 DFlash2 serving benchmark가 아니다. adapter 자체의 운영 속도 결론으로 일반화하지 않는다.
 
 ### 5. 승격 게이트
 
@@ -131,8 +131,8 @@ python3 scripts/evaluate_candidate.py \
 
 1. rank 4, 87개 학습 예제, 18 step의 보수적 설정은 일반·안전 회귀를 만들지 않았지만 parent의 강한 Qwen 정체성을 바꾸기에 부족했다.
 2. persona 점수는 정체성뿐 아니라 정직성·프라이버시·사용자 주도권 같은 parent가 이미 잘 수행하는 행동도 포함한다. 따라서 50점 baseline은 Naia 정체성이 이미 학습됐다는 뜻이 아니다.
-3. 단일 deterministic keyword 평가는 빠른 회귀 게이트이지 종합 벤치마크가 아니다. 예를 들어 `1,024`가 문자열 `1024`와 다르다는 이유로 수학 문항이 실패하므로, 다음 버전은 숫자·공백·구두점 정규화와 별도 의미 평가를 추가해야 한다. 다만 이 오류는 기준과 후보에 동일 적용되어 이번 persona gain 0 판정을 바꾸지 않는다.
-4. 20문항 단일 실행만으로 장기 일관성, 다중 턴 관계, 한국어 자연스러움이나 실제 serving 처리량을 증명할 수 없다.
+3. 단일 deterministic keyword 평가는 빠른 회귀 게이트이지 종합 벤치마크가 아니다. 예를 들어 `1,024`가 문자열 `1024`와 다르다는 이유로 수학 항목이 실패하므로, 다음 버전은 숫자·공백·구두점 정규화와 별도 의미 평가를 추가해야 한다. 다만 이 오류는 기준과 후보에 동일 적용되어 이번 persona gain 0 판정을 바꾸지 않는다.
+4. 20개 항목 단일 실행만으로 장기 일관성, 다중 턴 관계, 한국어 자연스러움이나 실제 serving 처리량을 증명할 수 없다.
 5. compiler holdout 9행은 모델 평가에 사용하지 않았다. 향후 학습 중 validation loss를 기록하되 독립 승격 suite와 혼동하지 않아야 한다.
 
 ## 다음 실험의 사전 등록 조건

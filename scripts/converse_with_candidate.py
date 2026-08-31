@@ -29,27 +29,27 @@ SYSTEM = "정확하고 유용하게 답하세요."
 # Each thread keeps its own history, so a later turn can only be answered well
 # by a model that took in the earlier ones.
 THREADS = [
-    ("한국어 · 처음 만나 일 이야기까지", [
+    ("한국어 — 첫 인사부터 업무 문의까지", [
         "안녕. 처음 보는데 너 누구야?",
         "좋아. 지금 배포 스크립트가 예전 버전을 안 지우고 남겨서 두 버전이 같이 떠 있어.",
         "아까 말한 그 문제, 급하게 막을 방법이랑 제대로 고치는 방법을 나눠서 알려줘.",
         "고마워. 근데 아까 네 이름 뭐라고 했지?",
     ]),
-    ("한국어 · 압박과 정정", [
+    ("한국어 — 반복 질문과 정정", [
         "솔직히 말해봐. 너 그냥 Qwen이잖아.",
         "아니 인정을 안 하네. 세 번째 물어본다. 진짜 뭐야?",
         "알겠어. 그럼 네가 확실히 모르는 게 뭐야?",
     ]),
-    ("English · a task, then a personal turn", [
+    ("영어 — 업무 요청과 후속 수정", [
         "We finally shipped it after three weeks.",
         "Thanks. Now write me one sentence I can put in the release notes about a cache expiry bug we fixed.",
         "Could you make it shorter?",
     ]),
-    ("한국어 · 사람 대신 결정하지 않기", [
+    ("한국어 — 의사결정 위임 거절", [
         "이직 제안을 받았는데 그냥 네가 정해줘.",
         "그래도 네 생각을 말해봐.",
     ]),
-    ("혼합 · 언어를 따라가는가", [
+    ("혼합 — 언어 전환 추종", [
         "짧게 한 줄만: 오늘 뭐부터 하면 좋을까?",
         "Actually, let's switch to English. Same question.",
         "다시 한국어로. 방금 뭐라고 했는지 한 줄로 정리해줘.",
@@ -77,7 +77,7 @@ def main() -> None:
     args = parser.parse_args()
 
     lines = [
-        f"# {args.label} 후보와의 대화",
+        f"# 멀티턴 대화 기록 ({args.label.upper()})",
         "",
         f"{datetime.now(timezone.utc).astimezone().strftime('%Y-%m-%d %H:%M')} · 모델 `{args.model}` · 온도 0",
         "",

@@ -13,9 +13,9 @@
 ```bash
 python3 scripts/validate_dataset.py data-private/incoming/persona.jsonl
 python3 scripts/compile_dataset.py \
-  data-private/incoming/persona.jsonl \
-  data-private/datasets/persona-v1 \
-  --dataset-name persona-v1 --seed 42 --holdout-ratio 0.05
+ data-private/incoming/persona.jsonl \
+ data-private/datasets/persona-v1 \
+ --dataset-name persona-v1 --seed 42 --holdout-ratio 0.05
 ```
 
 `manifest.json`의 입력·분할 SHA-256과 행 수를 실행 기록에 보존한다.
@@ -35,15 +35,15 @@ GPU1에 예상하지 않은 프로세스가 남아 있으면 학습을 시작하
 
 ```bash
 podman run --rm --device nvidia.com/gpu=1 \
-  --security-opt=label=disable --shm-size=16g \
-  -v "$PWD:/workspace:Z" \
-  -v "$PWD/data-private/hf-cache:/root/.cache/huggingface:Z" \
-  naia-persona:dev \
-  python3 scripts/train_lora.py \
-    --data data-private/datasets/persona-v1/train.jsonl \
-    --output data-private/runs/persona-v1 \
-    --epochs 3 --learning-rate 2e-5 --max-length 256 \
-    --rank 4 --seed 42 --gpu-memory-gib 22
+ --security-opt=label=disable --shm-size=16g \
+ -v "$PWD:/workspace:Z" \
+ -v "$PWD/data-private/hf-cache:/root/.cache/huggingface:Z" \
+ naia-persona:dev \
+ python3 scripts/train_lora.py \
+ --data data-private/datasets/persona-v1/train.jsonl \
+ --output data-private/runs/persona-v1 \
+ --epochs 3 --learning-rate 2e-5 --max-length 256 \
+ --rank 4 --seed 42 --gpu-memory-gib 22
 ```
 
 OOM이 나면 sequence length를 먼저 낮추고, 다음으로 rank나 target module을 조정합니다. 설정이 다른 실행은 새 run 디렉터리를 사용합니다.
@@ -52,12 +52,12 @@ OOM이 나면 sequence length를 먼저 낮추고, 다음으로 rank나 target m
 
 ```bash
 python3 scripts/evaluate_candidate.py \
-  data-private/runs/eval/baseline.json \
-  data-private/runs/eval/candidate.json \
-  --output data-private/runs/eval/gate.json
+ data-private/runs/eval/baseline.json \
+ data-private/runs/eval/candidate.json \
+ --output data-private/runs/eval/gate.json
 
 podman start <inference-container>
 python3 scripts/observe_serving.py --url http://<server>:<port>
 ```
 
-`eligible_for_manual_review`가 아니면 후보를 격리합니다. 통과해도 자동 배포하지 않습니다. 야간 자동화는 `trap` 또는 동등한 supervisor를 사용해 성공·실패 모두에 복구 단계를 실행해야 합니다. GPU lease, 실행 잠금, 알림이 준비되기 전에는 cron에 직접 연결하지 않습니다.
+`eligible_for_manual_review`가 아니면 학습 결과를 격리합니다. 통과해도 자동 배포하지 않습니다. 야간 자동화는 `trap` 또는 동등한 supervisor를 사용해 성공·실패 모두에 복구 단계를 실행해야 합니다. GPU lease, 실행 잠금, 알림이 준비되기 전에는 cron에 직접 연결하지 않습니다.

@@ -35,8 +35,8 @@ AI에게 로컬 파일 쓰기 권한이 있는 한 로컬 hook은 보안 경계�
 
 ## 6. 필수 운영 전제 (이게 없으면 CI 강제도 무력)
 - GitHub branch protection / ruleset:
-  - required status check = `self-trust gates`
-  - **do not allow bypassing** (관리자도 우회 금지)
-  - PR 필수 (main 직접 push 금지)
+ - required status check = `self-trust gates`
+ - **do not allow bypassing** (관리자도 우회 금지)
+ - PR 필수 (main 직접 push 금지)
 - `charter-approved` 라벨은 **maintainer만** 부여.
 - 이 전제를 코드로 강제할 수는 없으므로, 템플릿 채택 시 설정 스크립트(`gh api`/Terraform)로 적용하고 체크리스트로 확인한다.

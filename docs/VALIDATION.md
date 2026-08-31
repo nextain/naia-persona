@@ -27,10 +27,10 @@ baseline.json candidate.json`으로 판정한다. 각 보고서는 `general_scor
 
 ```bash
 VLLM_API_KEY=... python3 scripts/benchmark_endpoint.py \
-  --url http://<server>:<port> \
-  --model unlocked \
-  --label dflash2-k7 \
-  --output data-private/runs/benchmarks/dflash2-k7.json
+ --url http://<server>:<port> \
+ --model unlocked \
+ --label dflash2-k7 \
+ --output data-private/runs/benchmarks/dflash2-k7.json
 ```
 
 비교할 때는 GPU, 엔진 이미지, 체크포인트, LoRA, KV dtype, 최대 컨텍스트, 프롬프트, seed, 출력 토큰 수를 고정한다. 워밍업은 통계에서 제외하며 원시 실행값을 모두 보존한다.
