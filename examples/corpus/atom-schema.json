@@ -1,0 +1,33 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "알파 코퍼스 원자",
+  "description": "알파에 대한 사실이나 성질 하나. 베이스 모델과 무관하게 보존된다.",
+  "type": "object",
+  "required": ["id", "layer", "domain", "claim", "evidence", "volatility", "rationale"],
+  "additionalProperties": false,
+  "properties": {
+    "id": {"type": "string", "pattern": "^[a-z]+-[a-z0-9-]+$",
+           "description": "안정 식별자. 자료가 갱신돼도 같은 것을 가리킨다"},
+    "layer": {"enum": ["weight", "memory", "drop"],
+              "description": "weight=가중치에 새김, memory=검색으로 찾음, drop=쓰지 않음"},
+    "domain": {"enum": ["luke", "alpha", "cafelua", "nextain", "naia"]},
+    "claim": {"type": "string", "minLength": 5,
+              "description": "한 문장. 무엇이 참인가"},
+    "evidence": {
+      "type": "array", "minItems": 1,
+      "items": {
+        "type": "object",
+        "required": ["source", "quote"],
+        "properties": {
+          "source": {"type": "string", "description": "저장소 기준 상대 경로"},
+          "quote": {"type": "string", "description": "원문 인용"}
+        },
+        "additionalProperties": false
+      }
+    },
+    "volatility": {"enum": ["stable", "slow", "fast"],
+                   "description": "stable=거의 안 바뀜, slow=연 단위, fast=수시로"},
+    "rationale": {"type": "string", "description": "왜 이 층에 속하는가"},
+    "risk": {"type": "string", "description": "과하게 학습되면 생길 문제"}
+  }
+}

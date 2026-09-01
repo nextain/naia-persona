@@ -166,6 +166,7 @@ data-private/
 ## 문서
 
 - [품질 관리 절차](docs/FT-QUALITY-PROCESS.md) — 10단계 방법론
+- [캐릭터 코퍼스 구성 방법](docs/CORPUS-METHOD.md) — 베이스 모델이 바뀌어도 남는 자료를 만드는 법
 - [실험 보고서](docs/reports/naia-persona-capacity-sweep-2026-09-01.md) — H30~H32 용량 탐색
 - [멀티턴 대화 기록](docs/reports/naia-conversation-h32-2026-09-01.md)
 - [실험 프로그램 기록](research/naia-persona-learning/) — charter, 가설 대장, 인사이트 대장
