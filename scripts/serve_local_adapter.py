@@ -60,8 +60,24 @@ def main() -> None:
             self.send_response(status)
             self.send_header("Content-Type", "application/json; charset=utf-8")
             self.send_header("Content-Length", str(len(body)))
+            # 셸은 웹뷰에서 fetch 로 부른다. 이 헤더가 없으면 curl 로는 되는데
+            # 셸에서는 조용히 차단되어 "모델이 안 뜬다" 로 나타난다.
+            self.send_header("Access-Control-Allow-Origin", "*")
+            self.send_header("Access-Control-Allow-Headers", "Content-Type, Authorization")
+            self.send_header("Access-Control-Allow-Methods", "GET, POST, OPTIONS")
             self.end_headers()
             self.wfile.write(body)
+
+        def do_OPTIONS(self) -> None:  # noqa: N802
+            # 웹뷰가 POST 앞에 보내는 프리플라이트. 이것이 없으면 채팅 요청이
+            # 실패하고, 모델 목록만 되는 상태가 된다.
+            self.send_response(HTTPStatus.NO_CONTENT)
+            self.send_header("Access-Control-Allow-Origin", "*")
+            self.send_header("Access-Control-Allow-Headers", "Content-Type, Authorization")
+            self.send_header("Access-Control-Allow-Methods", "GET, POST, OPTIONS")
+            self.send_header("Access-Control-Max-Age", "86400")
+            self.send_header("Content-Length", "0")
+            self.end_headers()
 
         def do_GET(self) -> None:  # noqa: N802
             if self.path.rstrip("/") == "/v1/models":

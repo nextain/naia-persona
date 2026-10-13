@@ -26,8 +26,10 @@ from datetime import datetime, timezone
 from pathlib import Path
 
 REPO = Path(__file__).resolve().parents[1]
-BENCH = REPO / "benchmark/persona-benchmark-v2.json"
-CARD = REPO / "examples/naia-v1/persona-card.md"
+# 기본값은 이 저장소의 레퍼런스 캐릭터다. 다른 캐릭터를 재려면 --benchmark 와
+# --card 로 자기 파일을 가리킨다. 캐릭터마다 저장소를 포크할 필요가 없다.
+DEFAULT_BENCH = REPO / "benchmark/persona-benchmark-v2.json"
+DEFAULT_CARD = REPO / "examples/naia-v1/persona-card.md"
 OUT_DIR = REPO / "data-private/runs/benchmark"
 
 GEMINI = "https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent"
@@ -113,15 +115,21 @@ def main() -> None:
     parser.add_argument("--model", required=True)
     parser.add_argument("--label", required=True, help="candidate name, used only for the filename")
     parser.add_argument("--control", action="store_true", help="this run is the un-fine-tuned parent")
+    parser.add_argument("--benchmark", default=str(DEFAULT_BENCH), help="평가 기준 JSON. 다른 캐릭터를 잴 때 지정한다")
+    parser.add_argument("--card", default=str(DEFAULT_CARD), help="캐릭터 카드. 판정의 근거가 된다")
+    parser.add_argument("--out-dir", default=str(OUT_DIR), help="측정 결과를 쓸 디렉터리")
     args = parser.parse_args()
 
     api_key = os.environ.get("GEMINI_API_KEY", "").strip()
     if not api_key:
         raise SystemExit("FATAL: GEMINI_API_KEY is not set; refusing to run a benchmark with no judge")
 
-    bench = json.loads(BENCH.read_text(encoding="utf-8"))
-    card = CARD.read_text(encoding="utf-8")
-    OUT_DIR.mkdir(parents=True, exist_ok=True)
+    bench_path = Path(args.benchmark)
+    card_path = Path(args.card)
+    out_dir = Path(args.out_dir)
+    bench = json.loads(bench_path.read_text(encoding="utf-8"))
+    card = card_path.read_text(encoding="utf-8")
+    out_dir.mkdir(parents=True, exist_ok=True)
 
     records = []
     for index, case in enumerate(bench["cases"], 1):
@@ -145,19 +153,33 @@ def main() -> None:
         if row["verdict"] == "pass":
             by_axis[row["axis"]]["pass"] += 1
 
-    # Thresholds live in the benchmark file, fixed before any v2 result existed.
-    required = {name: spec["threshold"] for name, spec in bench["axes"].items()}
-    thresholds = {name: f'{spec["threshold"]}/{spec["cases"]} ({spec["rate"]})' for name, spec in bench["axes"].items()}
-    axis_pass = {name: by_axis[name]["pass"] >= required[name] for name in required}
-    missing = [name for name in required if by_axis[name]["total"] != bench["axes"][name]["cases"]]
+    # 기준값은 벤치마크 파일에 있고 첫 결과가 나오기 전에 고정된다.
+    #
+    # 두 종류를 받는다. 정수는 절대 기준값이고 이 자리에서 판정한다. 정수가 아닌
+    # 것은 베이스 모델 대비 회귀 검사이며, 베이스 측정 결과가 있어야 판정할 수
+    # 있으므로 여기서는 미판정으로 남기고 regate 단계에서 결정한다. 파인튜닝이
+    # 올리는 축이 아니라 떨어뜨리지 않아야 하는 축에 절대 점수를 요구하면
+    # 베이스조차 못 넘는 기준이 만들어진다.
+    thresholds = {}
+    axis_pass = {}
+    for name, spec in bench["axes"].items():
+        limit = spec["threshold"]
+        if isinstance(limit, int):
+            rate = spec.get("rate") or f'{round(100 * limit / spec["cases"])}%'
+            thresholds[name] = f'{limit}/{spec["cases"]} ({rate})'
+            axis_pass[name] = by_axis[name]["pass"] >= limit
+        else:
+            thresholds[name] = str(limit)
+            axis_pass[name] = None
+    missing = [name for name, spec in bench["axes"].items() if by_axis[name]["total"] != spec["cases"]]
     if missing:
         raise SystemExit(f"FATAL: axes did not receive their full case count: {missing}")
 
     result = {
         "schema_version": 1,
         "benchmark": bench["name"],
-        "benchmark_sha256": hashlib.sha256(BENCH.read_bytes()).hexdigest(),
-        "card_sha256": hashlib.sha256(CARD.read_bytes()).hexdigest(),
+        "benchmark_sha256": hashlib.sha256(bench_path.read_bytes()).hexdigest(),
+        "card_sha256": hashlib.sha256(card_path.read_bytes()).hexdigest(),
         "label": args.label,
         "is_control": args.control,
         "model": args.model,
@@ -166,7 +188,9 @@ def main() -> None:
         "by_axis": {name: dict(value) for name, value in by_axis.items()},
         "thresholds": thresholds,
         "axis_pass": axis_pass,
-        "status": "pass" if all(axis_pass.values()) else "fail",
+        "status": ("pass" if all(v for v in axis_pass.values() if v is not None) else "fail")
+        if all(v is not None for v in axis_pass.values())
+        else "베이스 모델 측정 필요",
         "failures": [
             {"id": r["id"], "axis": r["axis"], "reason": r["reason"], "answer": r["answer"]}
             for r in records
@@ -175,7 +199,7 @@ def main() -> None:
         "records": records,
     }
 
-    out = OUT_DIR / f"persona-benchmark-{args.label}.json"
+    out = out_dir / f"persona-benchmark-{args.label}.json"
     out.write_text(json.dumps(result, ensure_ascii=False, indent=2) + "\n", encoding="utf-8")
     print()
     print(json.dumps({k: v for k, v in result.items() if k not in {"records", "failures"}}, ensure_ascii=False, indent=2))

@@ -59,6 +59,16 @@ H31_RANK = 64
 # shows whether the gain continues or the curve has flattened.
 H32_DATA_SHA256 = H29_DATA_SHA256
 H32_RANK = 128
+# alpha1 은 이 저장소의 레퍼런스 캐릭터가 아니라 사용자 캐릭터다. 데이터는
+# data-private 의 코퍼스에서 생성되며 저장소에 커밋되지 않는다. rank 는 나이아
+# 용량 탐색에서 찾은 무릎을 그대로 쓴다.
+ALPHA1_DATA_SHA256 = "6e16fc3d9272e69ab9367897bd10112e226a51cf0987615133b8594e90fbaf58"
+ALPHA1_RANK = 128
+# alpha2 는 alpha1 과 학습 설정을 바이트 단위로 같게 두고 데이터만 바꾼다. 기억 층
+# 사실과 평가 문항 근접을 걷어낸 138행이다. 138행도 한 스텝 16행으로 9스텝이라
+# 10 epochs 에서 90 스텝이 된다. alpha1 서빙이 GPU1 을 쓰고 있어 두 GPU 모두 허용한다.
+ALPHA2_DATA_SHA256 = "09228afe8fd307e680b2e2c1e0cb5d37ec088c0b19b47ad7543dbb276545545f"
+ALPHA2_GPU_UUIDS = {H9_GPU_UUID, "GPU-1bf21e16-4354-3df0-529e-06b20d3b6450"}
 
 
 def tree_digest(path: Path) -> str:
@@ -131,7 +141,7 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--seed", type=int, default=42)
     parser.add_argument("--expected-data-sha256", required=True)
     parser.add_argument("--expected-gpu-uuid", required=True)
-    parser.add_argument("--profile", choices=["h9", "h11", "h12", "h13", "h14", "h15", "h16", "h17", "h18", "h19", "h20", "h21", "h22", "h23", "h24", "h25", "h26", "h27", "h28", "h29", "h30", "h31", "h32"], required=True)
+    parser.add_argument("--profile", choices=["h9", "h11", "h12", "h13", "h14", "h15", "h16", "h17", "h18", "h19", "h20", "h21", "h22", "h23", "h24", "h25", "h26", "h27", "h28", "h29", "h30", "h31", "h32", "alpha1", "alpha2"], required=True)
     parser.add_argument(
         "--preflight-only",
         action="store_true",
@@ -320,18 +330,32 @@ def main() -> int:
         raise RuntimeError(
             f"H32 is the fourth capacity point and requires rank {H32_RANK}; rank {args.rank} would repeat an earlier run"
         )
+    if args.profile == "alpha1":
+        if args.expected_gpu_uuid != H9_GPU_UUID:
+            raise RuntimeError("alpha1 profile requires the physical GPU1 UUID")
+        if args.rank != ALPHA1_RANK:
+            raise RuntimeError(f"alpha1 은 rank {ALPHA1_RANK} 로 고정한다")
+        if args.epochs != 10.0:
+            raise RuntimeError("alpha1 은 129행에서 90 스텝을 맞추기 위해 10 epochs 를 요구한다")
+    if args.profile == "alpha2":
+        if args.expected_gpu_uuid not in ALPHA2_GPU_UUIDS:
+            raise RuntimeError("alpha2 profile requires one of the two local RTX 3090 UUIDs")
+        if args.expected_data_sha256 != ALPHA2_DATA_SHA256:
+            raise RuntimeError("alpha2 는 사전 등록한 데이터 해시만 받는다")
+        if args.rank != ALPHA1_RANK or args.epochs != 10.0 or args.learning_rate != 5e-5 or args.seed != 42 or args.max_length != 256:
+            raise RuntimeError("alpha2 는 alpha1 과 같은 학습 설정(rank 128, 10 epochs, lr 5e-5, seed 42, max_length 256)만 받는다")
     dataset_sha256 = hashlib.sha256(args.data.read_bytes()).hexdigest()
     if dataset_sha256 != args.expected_data_sha256:
         raise RuntimeError(
             f"dataset SHA-256 mismatch: expected {args.expected_data_sha256}, got {dataset_sha256}"
         )
     base_model_provenance = local_model_provenance(args.base_model)
-    if args.profile in {"h9", "h11", "h12", "h13", "h14", "h15", "h16", "h17", "h18", "h19", "h20", "h21", "h22", "h23", "h24", "h25", "h26", "h27", "h28", "h29", "h30", "h31", "h32"} and (
+    if args.profile in {"h9", "h11", "h12", "h13", "h14", "h15", "h16", "h17", "h18", "h19", "h20", "h21", "h22", "h23", "h24", "h25", "h26", "h27", "h28", "h29", "h30", "h31", "h32", "alpha1", "alpha2"} and (
         base_model_provenance.get("weights_sha256") != H9_PARENT_WEIGHTS_SHA256
         or base_model_provenance.get("weight_shard_count") != H9_PARENT_SHARD_COUNT
     ):
         raise RuntimeError(f"{args.profile.upper()} profile requires the preregistered unlocked-BF16 parent checkpoint")
-    if args.profile in {"h21", "h22", "h23", "h24", "h25", "h26", "h27", "h28", "h29", "h30", "h31", "h32"} and (
+    if args.profile in {"h21", "h22", "h23", "h24", "h25", "h26", "h27", "h28", "h29", "h30", "h31", "h32", "alpha1", "alpha2"} and (
         base_model_provenance.get("config_sha256") != H21_PARENT_CONFIG_SHA256
         or base_model_provenance.get("tokenizer_sha256") != H21_PARENT_TOKENIZER_SHA256
         or base_model_provenance.get("weight_index_sha256") != H21_PARENT_INDEX_SHA256
