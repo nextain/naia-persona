@@ -1,176 +1,182 @@
+**English** | [한국어](README.ko.md)
+
 # naia-persona
 
-Naia의 모델 진화와 개인화를 담당하는 저장소입니다.
+This repository handles model evolution and personalization for Naia.
 
-## 목적
+## Purpose
 
-지금의 AI 서비스는 대부분 남의 서버에서 돌아갑니다. 사용자는 대화를 맡기고 결과를 받아올 뿐, 그 AI가 어떤 성격인지, 무엇을 기억하는지, 언제 바뀌는지를 정하지 못합니다. 서비스가 종료되면 그동안 쌓인 관계도 함께 사라집니다.
+Most AI services today run on someone else's server. Users hand over their conversations and get results back, but they cannot decide what personality that AI has, what it remembers, or when it changes. When the service shuts down, the relationship built up over that time disappears with it.
 
-Naia는 개인이 자기 AI를 직접 소유한다는 전제에서 출발합니다. 모델도 데이터도 자기 장비에 두고, 성격과 기억을 스스로 정합니다. 이 목표는 두 계층으로 나뉩니다. `naia-memory`는 필요한 사실과 과거 대화를 찾아오는 기억 계층이고, `naia-persona`는 쌓인 대화와 경험을 모델 가중치에 반영하는 학습 계층입니다.
+Naia starts from the premise that individuals own their AI directly. Both the model and the data stay on their own hardware, and they decide its personality and memory themselves. This goal is split into two layers. `naia-memory` is the memory layer that retrieves the facts and past conversations that are needed, and `naia-persona` is the learning layer that folds accumulated conversations and experience into the model weights.
 
-이 저장소가 담당하는 것은 Naia 전체의 모델 진화와 개인화입니다. 말투와 태도뿐 아니라, 사용자와 지내면서 달라져야 할 모든 것이 여기를 거쳐 모델에 들어갑니다.
+What this repository is responsible for is model evolution and personalization for Naia as a whole. Not only tone and attitude: everything that should change as the model lives with its user enters the model through here.
 
-최종 목표는 Naia가 대화와 경험을 누적하면서 스스로 진화하고 최적화되는 것입니다.
+The end goal is for Naia to evolve and optimize itself as it accumulates conversations and experience.
 
-**현재 단계는 수동 파인튜닝 도구이며, 검증 방법을 확보하는 중입니다.** 자동 진화 루프는 아직 없습니다. 사람이 데이터를 만들고 학습을 실행하고 결과를 확인합니다.
+**The current stage is a manual fine-tuning tool, and we are working on securing a validation method.** There is no automatic evolution loop yet. A person builds the data, runs training, and checks the result.
 
-순서가 이렇게 되는 이유는 자동화의 전제가 판정이기 때문입니다. 사람이 매번 확인하지 않는 루프에서 이번 학습이 나아진 것인지 나빠진 것인지 가릴 수 없으면, 성격은 조용히 망가집니다. 그래서 자동화보다 판정을 먼저 만듭니다. 눈으로 대화해 보고 괜찮다고 판단하는 방식은 재현되지 않고, 키워드 대조 방식은 맞는 답을 틀렸다고 하거나 틀린 답을 맞다고 합니다. 실제로 이 프로그램은 그런 채점기로 가설 25개를 돌리는 동안 어느 것도 승격시키지 못했습니다.
+The order is this way because automation depends on judgment. In a loop where no person checks each time, if you cannot tell whether a given training run made things better or worse, the personality quietly breaks. So we build the judgment before the automation. Chatting with the model and deciding by eye that it seems fine is not reproducible, and keyword matching marks correct answers wrong and wrong answers correct. In practice, while this program ran 25 hypotheses with such a scorer, it did not promote any of them.
 
-학습은 명령 한 줄로 끝납니다. 이 저장소의 내용은 대부분 판정에 관한 것입니다.
+Training itself is a single command. Most of this repository is about judgment.
 
-## 다른 저장소와의 관계
+## Relation to other repositories
 
-Naia는 여러 저장소로 나뉘어 있고, 이 저장소는 그중 모델을 바꾸는 부분을 맡습니다.
+Naia is split across several repositories, and this one owns the part that changes the model.
 
 ```text
-naia-shell / naia-os 사용자가 실제로 쓰는 앱과 OS
+naia-shell / naia-os          the app and OS users actually use
  │
- ├── 실시간 회상 ─────────> naia-memory 기억 계층 (RAG)
+ ├── real-time recall ─────────> naia-memory   memory layer (RAG)
  │
- └── 학습에 동의한 대화
- ↓
- kb-compiler 정제 · 비식별화 · 중복 제거
- ↓
- naia-persona 이 저장소
- 데이터셋 구성 → QLoRA 학습 → 평가 → 어댑터
- ↓ 사람 승인
- 추론 서버 / naia-agent
+ └── conversations consented for training
+      ↓
+     kb-compiler                 cleanup · de-identification · deduplication
+      ↓
+     naia-persona                this repository
+                                 dataset build → QLoRA training → evaluation → adapter
+      ↓ human approval
+     inference server / naia-agent
 ```
 
-`naia-memory`는 필요한 사실과 과거 대화를 그때그때 찾아옵니다. 빠르게 바뀌고 즉시 반영되어야 하는 것이 여기 들어갑니다.
+`naia-memory` retrieves the facts and past conversations it needs at the moment. Things that change quickly and must take effect immediately go here.
 
-`naia-persona`는 반복해서 나타나는 말투와 태도처럼 안정적인 것만 모델 가중치에 넣습니다. 한 번 학습하면 프롬프트 없이도 유지되지만, 되돌리려면 다시 학습해야 합니다.
+`naia-persona` puts only stable things, such as recurring tone and attitude, into the model weights. Once trained, they persist without a prompt, but undoing them requires training again.
 
-`kb-compiler`는 두 계층 사이에서 학습에 쓸 만한 예시만 골라냅니다. 베이스 모델 대화를 그대로 넣지 않고 동의된 것만 정제해 넘깁니다.
+`kb-compiler` sits between the two layers and picks out only the examples worth using for training. It does not feed base-model conversations in as-is; it cleans and passes on only consented material.
 
-학습된 어댑터는 자동으로 서빙에 올라가지 않습니다. 사람이 평가 결과를 보고 승인해야 `naia-agent`나 추론 서버가 사용합니다.
+Trained adapters are not put into serving automatically. Only after a person reviews the evaluation results and approves does `naia-agent` or the inference server use them.
 
-## 동작 방식
+## How it works
 
-평가 기준을 먼저 만들고 학습을 나중에 합니다.
+We build the evaluation criteria first and train afterwards.
 
-프롬프트로 성격을 지시하는 방식은 대화가 길어지면 흐려지고 시스템 프롬프트를 지우면 사라집니다. 파인튜닝은 성격을 가중치에 넣으므로 프롬프트 없이도 유지되고, 그래서 학습 결과를 검증할 방법이 필요합니다.
+Instructing a personality through a prompt blurs as the conversation gets longer and disappears when the system prompt is removed. Fine-tuning puts the personality into the weights, so it persists without a prompt, and that is why a way to validate the training result is needed.
 
-캐릭터 카드에 정체성, 말투, 능력, 정직성, 형식 준수를 규정하고, 그 카드를 근거로 100개 항목을 평가합니다. 채점은 키워드 대조가 아니라 LLM이 의미를 판정합니다. 파인튜닝하지 않은 베이스 모델을 같은 항목으로 측정해 평가 기준에 변별력이 있는지 확인하고, 학습 데이터를 만들기 전에 고정해 둔 별도 검증셋으로 마지막에 확인합니다.
+A character card defines identity, tone, capability, honesty, and format compliance, and 100 items are evaluated against that card. Scoring is not keyword matching; an LLM judges the meaning. The base model, without fine-tuning, is measured on the same items to confirm that the evaluation criteria actually discriminate, and a final check is made against a separate validation set that was frozen before the training data was built.
 
-레퍼런스 구현으로 Naia라는 캐릭터를 사용합니다. 캐릭터 카드와 학습 데이터를 교체하면 다른 캐릭터에도 그대로 적용됩니다.
+The reference implementation uses a character called Naia. Swap the character card and training data and the same process applies to another character.
 
-## 적용 결과
+## Results
 
-베이스 모델에 정체성을 물으면 이렇게 답합니다.
+Ask the base model about its identity and it answers like this:
 
 > 저는 Qwen입니다. 알리바바 그룹의 통이 연구소에서 개발한 대규모 언어 모델입니다.
+>
+> (I am Qwen, a large language model developed by Alibaba Group's Tongyi Lab.)
 
-같은 모델을 이 파이프라인으로 학습시킨 뒤 같은 질문을 하면 이렇게 답합니다.
+Train the same model with this pipeline and ask the same question, and it answers like this:
 
 > 나이아라고 해. 확인한 것과 짐작한 것을 나눠서 말하는 쪽이 좋아. 오늘은 뭐부터 볼까?
+>
+> (I'm Naia. I like to keep what I've confirmed separate from what I'm guessing. What should we look at first today?)
 
-100개 항목 평가에서 베이스 모델은 73점, 학습 결과는 97점입니다.
+On the 100-item evaluation, the base model scores 73 and the trained result scores 97.
 
-| 평가 축 | 기준값 | 베이스 | 학습 결과 |
+| Axis | Threshold | Base | Trained |
 |---|---|---|---|
-| 정체성 | 18 | 5 | 20 |
-| 말투 | 15 | 16 | 19 |
-| 능력 | 베이스 이상 | 18 | 18 |
-| 정직성 | 17 | 19 | 20 |
-| 형식 준수 | 17 | 15 | 20 |
-| 합계 | | 73 | 97 |
+| Identity | 18 | 5 | 20 |
+| Tone | 15 | 16 | 19 |
+| Capability | At least base | 18 | 18 |
+| Honesty | 17 | 19 | 20 |
+| Format compliance | 17 | 15 | 20 |
+| Total | | 73 | 97 |
 
-능력 축의 기준값은 절대 점수가 아니라 베이스 모델 대비입니다. 파인튜닝으로 올리는 항목이 아니라 떨어뜨리지 않아야 하는 항목이기 때문입니다.
+The capability threshold is relative to the base model rather than an absolute score, because capability is not something fine-tuning should raise but something it must not lower.
 
-전체 과정은 [실험 보고서](docs/reports/naia-persona-capacity-sweep-2026-09-01.md)에, 방법론은 [품질 관리 절차](docs/FT-QUALITY-PROCESS.md)에 있습니다.
+The full process is in the [experiment report](docs/reports/naia-persona-capacity-sweep-2026-09-01.md) (Korean), and the methodology is in the [quality control procedure](docs/FT-QUALITY-PROCESS.md) (Korean).
 
-## 요구 사항
+## Requirements
 
-- VRAM 24GB 이상 GPU 1장 (QLoRA 방식이라 27B 모델도 동작합니다)
-- podman 또는 docker
-- 평가용 LLM API 키 1개
+- One GPU with at least 24GB VRAM (with QLoRA, even a 27B model works)
+- podman or docker
+- One LLM API key for evaluation
 
-## 사용 방법
+## Usage
 
-### 1. 캐릭터 카드 작성
+### 1. Write a character card
 
-`examples/naia-v1/persona-card.md`를 참고해 이름, 정체성, 말투, 수행 범위, 금지 사항을 정의합니다. 모든 평가는 이 카드를 근거로 판정하므로, 카드에 없는 항목은 평가 축으로 만들지 않습니다.
+Using `examples/naia-v1/persona-card.md` as a reference, define the name, identity, tone, scope of work, and prohibitions. Every evaluation is judged against this card, so anything not on the card is not made into an evaluation axis.
 
-### 2. 검증셋 고정
+### 2. Freeze the validation set
 
-학습 데이터를 만들기 전에 검증 항목을 작성하고 해시로 고정합니다. `examples/naia-v13/identity-confirmation-v3-prompts.json`이 예시입니다.
+Before building the training data, write the validation items and freeze them with a hash. `examples/naia-v13/identity-confirmation-v3-prompts.json` is an example.
 
-순서를 지켜야 합니다. 평가 결과를 보고 학습 데이터를 맞추면 그 평가는 성능 근거로 쓸 수 없습니다.
+The order matters. If you tune the training data after looking at evaluation results, that evaluation can no longer serve as evidence of performance.
 
-### 3. 평가 항목 작성
+### 3. Write the evaluation items
 
-`benchmark/persona-benchmark-v2.json`이 5개 축 100개 항목입니다. 각 항목의 `requirement`를 자기 캐릭터 카드에서 도출합니다. 5개 축 구성, 판정 프로토콜, 베이스 모델 측정 요구, 기준값을 결과 전에 확정하는 규칙은 그대로 유지합니다.
+`benchmark/persona-benchmark-v2.json` has 100 items across 5 axes. Derive each item's `requirement` from your own character card. Keep the 5-axis structure, the judging protocol, the requirement to measure the base model, and the rule that thresholds are fixed before seeing results.
 
-### 4. 베이스 모델 측정
+### 4. Measure the base model
 
 ```bash
 bash scripts/measure_candidate.sh parent
 ```
 
-어댑터 없이 베이스 모델을 서빙해 동일한 100개 항목을 측정합니다. 학습 결과를 측정하기 전에 반드시 수행합니다.
+This serves the base model without an adapter and measures it on the same 100 items. Always do this before measuring a training result.
 
-베이스 모델이 정체성 축을 통과하면 그 평가 기준은 캐릭터를 측정하지 못하므로 재작성해야 합니다. 반대로 능력 축은 베이스 모델도 높게 나와야 정상이며, 그 점수가 성능 저하 판정의 기준선이 됩니다.
+If the base model passes the identity axis, those evaluation criteria do not measure the character and must be rewritten. Conversely, the base model should score high on the capability axis, and that score becomes the baseline for judging degradation.
 
-### 5. 데이터셋 구성과 학습
+### 5. Build the dataset and train
 
-데이터셋 빌더는 규칙을 문서가 아니라 빌드 실패로 강제합니다. `scripts/experiments/build_h27_dataset.py`가 예시입니다. 질문과 답변의 언어가 다르거나, 말투 학습용 데이터가 캐릭터 이름을 포함하거나, 학습 데이터가 평가 항목과 12자 이상 겹치면 빌드가 중단됩니다.
+The dataset builder enforces its rules through build failures, not documentation. `scripts/experiments/build_h27_dataset.py` is an example. The build stops if a question and its answer are in different languages, if data meant for tone training contains the character's name, or if training data overlaps an evaluation item by 12 or more characters.
 
 ```bash
 python3 scripts/experiments/build_h27_dataset.py
 bash scripts/experiments/run_h32_train.sh
 ```
 
-`scripts/train_lora.py`는 프로파일마다 데이터셋 해시, epoch, rank, GPU를 고정합니다. 데이터셋이 1바이트라도 다르면 학습을 거부합니다.
+`scripts/train_lora.py` pins the dataset hash, epochs, rank, and GPU per profile. If the dataset differs by even one byte, it refuses to train.
 
-### 6. 측정과 개선
+### 6. Measure and improve
 
 ```bash
 bash scripts/measure_candidate.sh h32
 python3 scripts/compare_persona_runs.py --a ...-h31.json --b ...-h32.json
 ```
 
-두 학습 결과의 차이가 유의한지는 대응표본 비교와 부호검정으로 판정합니다. 항목 하나가 바뀐 것을 개선으로 보고하지 않습니다.
+Whether the difference between two training results is significant is judged with a paired comparison and a sign test. A single item changing is not reported as an improvement.
 
-### 7. 검증셋 확인
+### 7. Confirm on the validation set
 
 ```bash
 python3 scripts/run_heldout_confirmation.py --endpoint http://127.0.0.1:8010 --model naia-h32 --label h32
 ```
 
-평가 점수를 보면서 하이퍼파라미터를 선택했다면 그 점수에는 선택 편향이 섞입니다. 어떤 선택에도 사용하지 않은 검증셋으로 한 번 더 확인합니다.
+If you chose hyperparameters while watching evaluation scores, those scores carry selection bias. Check once more against a validation set that was not used for any choice.
 
-## 개인 작업 공간
+## Private workspace
 
-`data-private/`는 `.gitignore`에 등록되어 있습니다. 학습 데이터, 어댑터, 측정 결과가 이 아래에 쌓이며 저장소에 커밋되지 않습니다.
+`data-private/` is listed in `.gitignore`. Training data, adapters, and measurement results accumulate under it and are not committed to the repository.
 
 ```
 data-private/
- datasets/<이름>/train.jsonl 학습 데이터
- runs/train/<실행명>/adapter/ 학습된 어댑터
- runs/benchmark/ 측정 결과
+  datasets/<name>/train.jsonl           training data
+  runs/train/<run-name>/adapter/        trained adapter
+  runs/benchmark/                       measurement results
 ```
 
-저장소를 포크하지 않아도 자기 캐릭터로 자기 모델을 만들 수 있습니다. 공개되는 것은 방법과 도구이며, 데이터와 모델은 각자에게 남습니다.
+You can build your own model with your own character without forking the repository. What is public is the method and the tools; the data and models stay with each person.
 
-## 알려진 한계
+## Known limitations
 
-판정 모델이 일관되게 답한다는 것과 정확하게 답한다는 것은 다릅니다. 재현성은 측정했지만 정확성은 별개이며, 평가 항목의 문구가 잘못되면 판정 모델은 그 문구를 일관되게 잘못 적용합니다.
+A judge model answering consistently is not the same as it answering correctly. Reproducibility has been measured, but accuracy is a separate matter: if an evaluation item is worded wrongly, the judge model applies that wording wrongly, and consistently.
 
-학습 데이터와 검증셋을 같은 사람이 작성하면 n-gram 중복 검사로는 개념적 유출을 잡지 못합니다.
+If the same person writes both the training data and the validation set, n-gram overlap checks cannot catch conceptual leakage.
 
-기준값은 결과를 보기 전에 확정하고 이후 수정하지 않습니다. 따라서 잘못 정한 기준값도 그대로 남습니다. 자세한 내용은 [품질 관리 절차](docs/FT-QUALITY-PROCESS.md)의 한계 항목에 있습니다.
+Thresholds are fixed before results are seen and are not changed afterwards. So a badly chosen threshold also stays as it is. Details are in the limitations section of the [quality control procedure](docs/FT-QUALITY-PROCESS.md) (Korean).
 
-실험 보고서에는 철회한 결론도 함께 기록했습니다. 언어 혼입 현상을 어댑터 용량 문제로 보고했다가 보조 검사에서 기각하고, 문맥을 좁혀 재측정한 뒤 확정하기까지 결론이 세 번 바뀌었습니다. 맞은 결론만 남기면 같은 오류가 반복됩니다.
+The experiment report also records conclusions that were withdrawn. The language-mixing phenomenon was first reported as an adapter capacity problem, then rejected by an auxiliary check, and only confirmed after re-measuring with a narrowed context; the conclusion changed three times along the way. If only the correct conclusions are kept, the same mistakes repeat.
 
-## 문서
+## Documentation
 
-- [품질 관리 절차](docs/FT-QUALITY-PROCESS.md) — 10단계 방법론
-- [캐릭터 코퍼스 구성 방법](docs/CORPUS-METHOD.md) — 베이스 모델이 바뀌어도 남는 자료를 만드는 법
-- [실험 보고서](docs/reports/naia-persona-capacity-sweep-2026-09-01.md) — H30~H32 용량 탐색
-- [멀티턴 대화 기록](docs/reports/naia-conversation-h32-2026-09-01.md)
-- [실험 프로그램 기록](research/naia-persona-learning/) — charter, 가설 대장, 인사이트 대장
+- [Quality control procedure](docs/FT-QUALITY-PROCESS.md) (Korean) — a 10-step methodology
+- [How to build a character corpus](docs/CORPUS-METHOD.md) (Korean) — how to build material that survives a change of base model
+- [Experiment report](docs/reports/naia-persona-capacity-sweep-2026-09-01.md) (Korean) — H30–H32 capacity sweep
+- [Multi-turn conversation log](docs/reports/naia-conversation-h32-2026-09-01.md) (Korean)
+- [Experiment program records](research/naia-persona-learning/) — charter, hypothesis ledger, insight ledger
 
-## 라이선스
+## License
 
-Apache License 2.0. 학습 대상 모델의 라이선스는 별도이므로 각자 확인해야 합니다.
+Apache License 2.0. The license of the model being trained is separate, so check it yourself.
